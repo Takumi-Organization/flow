@@ -145,7 +145,7 @@ fun RunRowItem(r: RunRow, onClick: () -> Unit) {
     }
     HorizontalDivider(color = k.line.copy(alpha = .4f))
 }
-fun triggerName(t: String) = when (t) { "manual" -> "manual"; "debug" -> "prueba"; "schedule" -> "programado"; "wifi" -> "WiFi"; "bluetooth" -> "Bluetooth"; "headset" -> "auriculares"; "battery" -> "batería"; "charging" -> "carga"; else -> t }
+fun triggerName(t: String) = when (t) { "manual" -> "manual"; "debug" -> "prueba"; "schedule" -> "programado"; "wifi" -> "WiFi"; "bluetooth" -> "Bluetooth"; "headset" -> "auriculares"; "battery" -> "batería"; "charging" -> "carga"; "calendar" -> "calendario"; "location" -> "ubicación"; else -> t }
 
 // ───────────────────────────── BIBLIOTECA ─────────────────────────────
 @Composable

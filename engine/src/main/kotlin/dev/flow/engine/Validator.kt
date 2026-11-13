@@ -41,6 +41,13 @@ object Validator {
                     if (!known) warn(n.id, "$name: «{{$r}}» no existe y quedará vacío")
                 }
             }
+            fun num(k: String) = n.params[k]?.let { (Value.parse(VarType.NUMBER, it) as? Value.Num)?.v }
+            if (n.type == "trigger_location") {
+                num("lat")?.let { if (it !in -90.0..90.0) err(n.id, "$name: la latitud debe estar entre -90 y 90") }
+                num("lon")?.let { if (it !in -180.0..180.0) err(n.id, "$name: la longitud debe estar entre -180 y 180") }
+                (num("radius") ?: 150.0).let { if (it !in 50.0..5000.0) err(n.id, "$name: el radio debe estar entre 50 y 5000 m") }
+            }
+            if (n.type == "trigger_calendar") (num("minutes") ?: 10.0).let { if (it !in 0.0..1440.0) err(n.id, "$name: los minutos deben estar entre 0 y 1440") }
             if (n.retries !in 0..5) err(n.id, "$name: reintentos fuera de rango (0–5)")
             if (spec.permissionHint.isNotBlank()) warn(n.id, "$name necesita: ${spec.permissionHint}")
             val outs = flow.edges.filter { it.from == n.id }

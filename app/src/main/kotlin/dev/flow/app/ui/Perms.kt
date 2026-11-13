@@ -33,8 +33,11 @@ val Caps: List<Cap> = listOf(
     Cap("bt", "Dispositivos Bluetooth cercanos", "Recibir cuándo se conecta o desconecta un dispositivo Bluetooth y conocer su nombre.",
         runtime = if (Build.VERSION.SDK_INT >= 31) Manifest.permission.BLUETOOTH_CONNECT else null,
         granted = { c -> Build.VERSION.SDK_INT < 31 || c.has(Manifest.permission.BLUETOOTH_CONNECT) }),
-    Cap("loc", "Ubicación (solo nombre del WiFi)", "Android oculta el nombre de la red WiFi si no hay permiso de ubicación. Flow no usa tu posición.",
+    Cap("loc", "Ubicación", "Nombre de la red WiFi (Android lo oculta sin este permiso) y disparador de ubicación. Flow no envía tu posición a ningún sitio.",
         runtime = Manifest.permission.ACCESS_FINE_LOCATION, granted = { c -> c.has(Manifest.permission.ACCESS_FINE_LOCATION) }),
+    Cap("bgloc", "Ubicación «Permitir siempre»", "Necesaria para que el disparador de ubicación funcione con la app cerrada. Sin ella solo se detecta con Flow abierta.",
+        granted = { c -> Build.VERSION.SDK_INT < 29 || c.has(Manifest.permission.ACCESS_BACKGROUND_LOCATION) },
+        settings = { c -> Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${c.packageName}")) }),
     Cap("battery", "Sin restricción de batería", "Evita que el ahorro agresivo de algunos fabricantes retrase alarmas y tareas.",
         granted = { c -> c.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(c.packageName) },
         settings = { Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS) }),
@@ -47,6 +50,8 @@ fun capsFor(type: String): List<String> = when (type) {
     "set_dnd" -> listOf("dnd")
     "trigger_bluetooth" -> listOf("bt")
     "trigger_wifi" -> listOf("loc")
+    "trigger_location" -> listOf("loc", "bgloc")
+    "trigger_calendar" -> listOf("calendar")
     "trigger_time", "trigger_weekday", "trigger_date" -> listOf("exact")
     else -> emptyList()
 }

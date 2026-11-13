@@ -72,4 +72,20 @@ val Templates: List<Template> = listOf(
                 n("log", "log_event", 500f, 200f, "message" to "Bluetooth conectado: {{trigger.device}}"),
             ),
             edges = listOf(e("t", "msg"), e("msg", "log")))),
+    Template("meeting", "Agenda", "Antes de una reunión", "10 min antes de un evento del calendario cuyo título contenga «reunión»: avisa con el título y la hora.",
+        FlowDef("meeting", "Antes de una reunión", description = "Recordatorio previo a eventos del calendario (ajusta el filtro del título).",
+            nodes = listOf(
+                n("t", "trigger_calendar", 40f, 200f, "minutes" to "10", "title" to "reunión"),
+                n("msg", "notify", 270f, 200f, "title" to "Empieza pronto", "text" to "{{trigger.title}} en {{trigger.minutes}} min."),
+                n("log", "log_event", 500f, 200f, "message" to "Aviso previo: {{trigger.title}}"),
+            ),
+            edges = listOf(e("t", "msg"), e("msg", "log")))),
+    Template("arrive", "Lugares", "Llegar a un sitio", "Al entrar en una zona (elige el punto con «Usar mi ubicación actual»): avisa y registra la llegada.",
+        FlowDef("arrive", "Llegar a un sitio", description = "Acción al entrar en una zona circular. Edita latitud, longitud y radio.",
+            nodes = listOf(
+                n("t", "trigger_location", 40f, 200f, "lat" to "37.8882", "lon" to "-4.7794", "radius" to "150", "transition" to "enter"),
+                n("msg", "notify", 270f, 200f, "title" to "Has llegado", "text" to "Son las {{now.time}}."),
+                n("log", "log_event", 500f, 200f, "message" to "Llegada a la zona a las {{now.time}}"),
+            ),
+            edges = listOf(e("t", "msg"), e("msg", "log")))),
 )

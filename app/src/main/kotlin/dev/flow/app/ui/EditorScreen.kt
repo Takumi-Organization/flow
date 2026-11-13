@@ -337,6 +337,15 @@ private fun ParamEditor(p: ParamSpec, n: NodeDef, st: EditorState, graph: Graph,
                 if (v.isNotBlank() && otherFlows.none { it.id == v }) Text("El flujo elegido ya no existe.", style = T.small, color = k.error) }
             else -> FField(v, set, p.label)
         }
+        if (n.type == "trigger_location" && p.key == "lon") {
+            var msg by remember { mutableStateOf<String?>(null) }
+            FButton("Usar mi ubicación actual", {
+                val loc = dev.flow.app.platform.LocationReceiver.lastKnown(ctx)
+                if (loc == null) msg = "Sin permiso de ubicación o sin posición conocida todavía"
+                else { st.updateNode(n.id) { it.copy(params = it.params + ("lat" to "%.5f".format(java.util.Locale.US, loc.first)) + ("lon" to "%.5f".format(java.util.Locale.US, loc.second))) }; msg = null }
+            })
+            msg?.let { Text(it, style = T.small, color = k.warn) }
+        }
         // valores de condición que dependen de la variable (ayuda de tipo)
         if (n.type == "cond_variable" && p.key == "value") vars.firstOrNull { it.name == n.params["name"] }?.let { Text("Se compara como ${typeName(it.type)}.", style = T.small, color = k.muted) }
     }

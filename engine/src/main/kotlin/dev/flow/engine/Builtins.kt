@@ -60,6 +60,16 @@ fun builtinRegistry(): NodeRegistry = NodeRegistry().registerAll(
         e.type == "battery" && lvl != null && prev != null && t != null &&
             Compare.ints(p["op"] ?: "lt", lvl, t) && !Compare.ints(p["op"] ?: "lt", prev, t)
     },
+    NodeSpec.Trigger("trigger_location", "Ubicación", "Al entrar o salir de una zona circular (se comprueba con cambios de posición del sistema, sin servicio permanente).",
+        listOf(P("lat", "Latitud", ParamType.NUMBER, true, help = "Ej. 37.8882. Usa «Usar mi ubicación» en el panel."), P("lon", "Longitud", ParamType.NUMBER, true),
+            P("radius", "Radio (m)", ParamType.NUMBER, true, "150"),
+            P("transition", "Cuando", ParamType.CHOICE, true, "enter", listOf("enter" to "entro en la zona", "exit" to "salgo de la zona"))),
+        scheduled = true, mechanism = "LocationManager con PendingIntent (receptor del manifiesto)",
+        permissionHint = "ubicación (y «Permitir siempre» para funcionar con la app cerrada)"),
+    NodeSpec.Trigger("trigger_calendar", "Evento de calendario", "N minutos antes de que empiece un evento del calendario (opcionalmente filtrado por título). Ignora eventos de todo el día.",
+        listOf(P("minutes", "Minutos antes", ParamType.NUMBER, true, "10"), P("title", "El título contiene (vacío = cualquiera)")),
+        scheduled = true, mechanism = "CalendarContract + AlarmManager (se relee el calendario cada hora y al abrir la app)",
+        permissionHint = "calendario"),
     NodeSpec.Trigger("trigger_charging", "Carga", "Al conectar o desconectar el cargador.",
         listOf(P("state", "Cuando", ParamType.CHOICE, true, "connected", stateChoices)),
         mechanism = "Servicio de escucha") { p, e -> e.type == "charging" && e.data["state"] == p["state"] },

@@ -53,6 +53,8 @@ class Graph(val app: Application) {
         val types = flows.flatMap { f -> f.nodes.map { it.type } }.toSet()
         Scheduler.rescheduleAll(ctx)
         WifiReceiver.sync(ctx, "trigger_wifi" in types)
+        CalendarSupport.syncPeriodic(ctx, "trigger_calendar" in types)
+        LocationReceiver.sync(ctx, "trigger_location" in types)
         return ListenerService.sync(ctx, types.any { it in ListenerService.TYPES })
     }
 }

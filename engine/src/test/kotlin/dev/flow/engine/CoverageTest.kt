@@ -109,7 +109,7 @@ class CoverageTest {
         val reg = testRegistry()
         val bad = flow(nodes = listOf(trig("t"), trig("t2"), act("a")),
             edges = listOf(edge("t", "a", "true"), edge("t2", "t")))
-        val msgs = Validator.validate(bad, reg).filter { it.severity == Severity.ERROR }.map { it.message }
+        val msgs = Validator.validate(bad, reg).filter { it.severity == Severity.ERROR }.map { it.message.lowercase() }
         assertTrue(msgs.any { it.contains("salida") }); assertTrue(msgs.any { it.contains("no puede recibir") })
     }
 
@@ -118,5 +118,54 @@ class CoverageTest {
         // viernes 2026-11-13 → siguiente lunes 2026-11-16
         assertEquals(LocalDateTime.of(2026, 11, 16, 9, 0), Schedule.nextFire(n, LocalDateTime.of(2026, 11, 13, 12, 0)))
         assertNull(Schedule.nextFire(n.copy(params = mapOf("days" to "", "at" to "09:00")), LocalDateTime.of(2026, 11, 13, 12, 0)))
+    }
+}
+
+class GeoCalendarTest {
+    @Test fun distanceIsReasonable() {
+        assertEquals(0.0, Geo.distanceM(37.88, -4.78, 37.88, -4.78), 0.001)
+        // 0,001° de latitud ≈ 111 m
+        assertEquals(111.2, Geo.distanceM(37.0, -4.0, 37.001, -4.0), 1.0)
+        // Córdoba - Sevilla ≈ 120 km en línea recta
+        assertEquals(120_000.0, Geo.distanceM(37.8882, -4.7794, 37.3891, -5.9845), 5_000.0)
+    }
+    @Test fun crossingRules() {
+        assertFalse(Geo.crossed(null, true, "enter"))       // primera lectura: no dispara
+        assertTrue(Geo.crossed(false, true, "enter"))
+        assertFalse(Geo.crossed(true, true, "enter"))
+        assertFalse(Geo.crossed(true, false, "enter"))
+        assertTrue(Geo.crossed(true, false, "exit"))
+        assertFalse(Geo.crossed(false, true, "exit"))
+    }
+    private val ev = listOf(
+        CalEvent(1, "Reunión equipo", 10_000_000), CalEvent(2, "Dentista", 20_000_000),
+        CalEvent(3, "Cumpleaños", 5_000_000, allDay = true), CalEvent(4, "Reunión cliente", 30_000_000))
+    @Test fun nextCalendarFire() {
+        val (e, at) = CalendarSchedule.next(ev, 10, "", 0)!!
+        assertEquals(1L, e.id); assertEquals(10_000_000 - 600_000, at)
+        // pasado el aviso del primero, toca el segundo
+        assertEquals(2L, CalendarSchedule.next(ev, 10, "", 9_400_000)!!.first.id)
+        assertEquals(4L, CalendarSchedule.next(ev, 0, "cliente", 0)!!.first.id)
+        assertNull(CalendarSchedule.next(ev, 10, "inexistente", 0))
+        assertNull(CalendarSchedule.next(ev, 10, "", 40_000_000))
+    }
+    @Test fun newTriggersAreValidated() {
+        val reg = builtinRegistry()
+        fun f(n: NodeDef) = Validator.validate(FlowDef("f", "F", nodes = listOf(n)), reg).filter { it.severity == Severity.ERROR }.map { it.message.lowercase() }
+        assertTrue(f(NodeDef("t", "trigger_location", params = mapOf("lat" to "37.8", "lon" to "-4.7", "radius" to "150"))).isEmpty())
+        assertTrue(f(NodeDef("t", "trigger_location", params = mapOf("lat" to "99", "lon" to "-4.7"))).any { it.contains("latitud") })
+        assertTrue(f(NodeDef("t", "trigger_location", params = mapOf("lat" to "37", "lon" to "-4", "radius" to "5"))).any { it.contains("radio") })
+        assertTrue(f(NodeDef("t", "trigger_location", params = mapOf("lat" to "37"))).any { it.contains("longitud") })
+        assertTrue(f(NodeDef("t", "trigger_calendar", params = mapOf("minutes" to "10"))).isEmpty())
+        assertTrue(f(NodeDef("t", "trigger_calendar", params = mapOf("minutes" to "5000"))).any { it.contains("minutos") })
+    }
+    @Test fun scheduledTriggersAreNotDispatchedByEvents() = kotlinx.coroutines.runBlocking {
+        val f = flow(nodes = listOf(NodeDef("t", "trigger_calendar", params = mapOf("minutes" to "5")), act("a")), edges = listOf(edge("t", "a")))
+        val prov = MemProvider(listOf(f))
+        assertTrue(engine(provider = prov).dispatch(TriggerEvent("calendar")).isEmpty())
+        // pero se puede ejecutar directamente (lo hace la alarma) y expone el título al flujo
+        val g = f.copy(nodes = listOf(f.nodes[0], act("a", params = mapOf("text" to "{{trigger.title}}"))))
+        val r = engine().run(g, "t", TriggerEvent("calendar", mapOf("title" to "Dentista")))
+        assertEquals("Dentista", r.nodes.first { it.nodeId == "a" }.output)
     }
 }

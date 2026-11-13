@@ -36,22 +36,33 @@ object Scheduler {
         val g = ctx.graph(); val am = ctx.getSystemService(AlarmManager::class.java)
         val now = LocalDateTime.now()
         val desired = LinkedHashMap<String, Pair<String, LocalDateTime>>()
-        for (f in g.repo.enabled()) for (n in f.nodes) if (Schedule.isScheduled(n.type)) {
+        val extras = HashMap<String, Map<String, String>>()
+        val enabled = g.repo.enabled()
+        for (f in enabled) for (n in f.nodes) if (Schedule.isScheduled(n.type)) {
             Schedule.nextFire(n, now)?.let { desired["${f.id}|${n.id}"] = n.id to it }
+        }
+        // Eventos de calendario: se relee el calendario y se programa el aviso del próximo evento que encaje.
+        for (f in enabled) for (n in f.nodes) if (n.type == "trigger_calendar") {
+            CalendarSupport.next(ctx, n, System.currentTimeMillis())?.let { (ev, at) ->
+                val key = "${f.id}|${n.id}"
+                desired[key] = n.id to java.time.Instant.ofEpochMilli(at).atZone(ZoneId.systemDefault()).toLocalDateTime()
+                extras[key] = mapOf("title" to ev.title, "start" to ev.startMs.toString(), "minutes" to (n.params["minutes"] ?: "10"))
+            }
         }
         val prefs = g.prefs
         (prefs.alarmKeys - desired.keys).forEach { am.cancel(pi(ctx, it)) }
         val exact = Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()
         for ((key, v) in desired) {
             val at = v.second.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            if (exact) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi(ctx, key))
-            else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi(ctx, key))
+            val p = pi(ctx, key, extras[key].orEmpty())
+            if (exact) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, p) else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, p)
         }
         prefs.alarmKeys = desired.keys
     }
-    private fun pi(ctx: Context, key: String): PendingIntent {
+    private fun pi(ctx: Context, key: String, extra: Map<String, String> = emptyMap()): PendingIntent {
         val i = Intent(ctx, AlarmReceiver::class.java).setAction(ACTION).setData(android.net.Uri.parse("flow://alarm/" + android.net.Uri.encode(key)))
             .putExtra("flowId", key.substringBefore('|')).putExtra("nodeId", key.substringAfter('|'))
+        if (extra.isNotEmpty()) i.putExtra("data", Json.encodeToString(mapSer, extra))
         return PendingIntent.getBroadcast(ctx, key.hashCode(), i, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
     fun canExact(ctx: Context) = Build.VERSION.SDK_INT < 31 || ctx.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
@@ -59,8 +70,10 @@ object Scheduler {
 
 /** Ejecuta flujos en WorkManager (sobrevive a la muerte del proceso; con cuota "expedited"). */
 object Runner {
-    fun scheduled(ctx: Context, flowId: String, nodeId: String) = enqueue(ctx, "run-$flowId-$nodeId", ExistingWorkPolicy.KEEP,
-        workDataOf("kind" to "schedule", "flowId" to flowId, "nodeId" to nodeId))
+    /** [type] "schedule", "calendar" o "location"; [data] llega al flujo como {{trigger.clave}}. */
+    fun scheduled(ctx: Context, flowId: String, nodeId: String, type: String = "schedule", data: Map<String, String> = emptyMap()) =
+        enqueue(ctx, "run-$flowId-$nodeId", ExistingWorkPolicy.KEEP,
+            workDataOf("kind" to "schedule", "flowId" to flowId, "nodeId" to nodeId, "type" to type, "data" to Json.encodeToString(mapSer, data)))
     fun event(ctx: Context, type: String, data: Map<String, String>) = enqueue(ctx, null, ExistingWorkPolicy.APPEND,
         workDataOf("kind" to "event", "type" to type, "data" to Json.encodeToString(mapSer, data)))
     fun manual(ctx: Context, flowId: String) {
@@ -85,7 +98,10 @@ class RunWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
         when (d.getString("kind")) {
             "schedule" -> {
                 val flow = g.repo.get(d.getString("flowId")!!)
-                if (flow != null && flow.enabled) g.engine.run(flow, d.getString("nodeId")!!, TriggerEvent("schedule", mapOf("at" to LocalDateTime.now().toString())))
+                if (flow != null && flow.enabled) {
+                    val extra = Json.decodeFromString(mapSer, d.getString("data") ?: "{}")
+                    g.engine.run(flow, d.getString("nodeId")!!, TriggerEvent(d.getString("type") ?: "schedule", mapOf("at" to LocalDateTime.now().toString()) + extra))
+                }
             }
             "manual" -> g.runManual(d.getString("flowId")!!).join()
             "event" -> g.engine.dispatch(TriggerEvent(d.getString("type")!!, Json.decodeFromString(mapSer, d.getString("data") ?: "{}")))
@@ -99,7 +115,8 @@ class AlarmReceiver : BroadcastReceiver() {
         val flowId = i.getStringExtra("flowId") ?: return; val nodeId = i.getStringExtra("nodeId") ?: return
         val pending = goAsync()
         // Primero se arranca la ejecución y se reprograma la siguiente: si algo falla, no se pierde la serie.
-        Runner.scheduled(ctx, flowId, nodeId)
+        val data = i.getStringExtra("data")?.let { runCatching { Json.decodeFromString(mapSer, it) }.getOrNull() }.orEmpty()
+        Runner.scheduled(ctx, flowId, nodeId, if ("title" in data) "calendar" else "schedule", data)
         CoroutineScope(Dispatchers.Default).launch {
             try { Scheduler.rescheduleAll(ctx) } finally { pending.finish() }
         }

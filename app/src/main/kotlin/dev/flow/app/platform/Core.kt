@@ -40,6 +40,10 @@ class Prefs(ctx: Context) {
     var alarmKeys: Set<String>
         get() = sp.getStringSet("alarms", emptySet()).orEmpty()
         set(v) { sp.edit().putStringSet("alarms", v).apply() }
+    /** Último estado dentro/fuera ("in"/"out") por «flujo|nodo» del disparador de ubicación. */
+    var geoStates: Map<String, String>
+        get() = sp.getStringSet("geo", emptySet()).orEmpty().associate { it.substringBefore('=') to it.substringAfter('=') }
+        set(v) { sp.edit().putStringSet("geo", v.map { "${it.key}=${it.value}" }.toSet()).apply() }
     var onboarded: Boolean
         get() = sp.getBoolean("onboarded", false); set(v) { sp.edit().putBoolean("onboarded", v).apply() }
     var theme: String
