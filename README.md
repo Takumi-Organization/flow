@@ -14,7 +14,7 @@ CUANDO (disparador) / SI (condición) / ENTONCES (acción) en un lienzo de nodos
 ```
 
 Requiere JDK 17+ y el SDK de Android (`local.properties` con `sdk.dir`, no se versiona).
-`app/src/androidTest/.../DeviceTest.kt` necesita dispositivo o emulador y **no se ha ejecutado** (ver docs/ESTADO.md).
+`DeviceTest.kt` se ejecutó en un emulador API 36: 8 de 9 pasan, 1 omitida (ver docs/ESTADO.md).
 
 ## Documentación
 
