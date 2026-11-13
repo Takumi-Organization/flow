@@ -8,6 +8,7 @@ import dev.flow.app.platform.*
 import dev.flow.engine.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.sync.withLock
 import java.time.LocalDateTime
 
 /** Contenedor único de dependencias (sin framework de DI: la app es pequeña). */
@@ -48,11 +49,13 @@ class Graph(val app: Application) {
     fun isRunning(flowId: String) = active[flowId]?.isActive == true
 
     /** Vuelve a programar alarmas y a activar/desactivar escuchas según los flujos activos. */
-    suspend fun syncBackground(ctx: Context): String? {
+    private val syncLock = kotlinx.coroutines.sync.Mutex()
+    /** Serializada: dos sincronizaciones a la vez (arranque + cambio de un flujo) podían dejar una escucha registrada con el estado antiguo. */
+    suspend fun syncBackground(ctx: Context): String? = syncLock.withLock { syncBackgroundLocked(ctx) }
+    private suspend fun syncBackgroundLocked(ctx: Context): String? {
         val flows = repo.enabled()
         val types = flows.flatMap { f -> f.nodes.map { it.type } }.toSet()
         Scheduler.rescheduleAll(ctx)
-        WifiReceiver.sync(ctx, "trigger_wifi" in types)
         CalendarSupport.syncPeriodic(ctx, "trigger_calendar" in types)
         LocationReceiver.sync(ctx, "trigger_location" in types)
         return ListenerService.sync(ctx, types.any { it in ListenerService.TYPES })

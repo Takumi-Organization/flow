@@ -104,3 +104,36 @@ class DeviceTriggersTest {
         } finally { g.repo.delete("geo-e2e"); LocationReceiver.sync(ctx, false) }
     }
 }
+
+/** Receptores reales del sistema: se disparan desde fuera con `dumpsys battery` y `svc wifi` (ver docs/ESTADO.md). */
+@RunWith(AndroidJUnit4::class)
+class DeviceListenersTest {
+    @get:Rule val perms: GrantPermissionRule = GrantPermissionRule.grant(Manifest.permission.POST_NOTIFICATIONS, Manifest.permission.ACCESS_FINE_LOCATION)
+    private val ctx: Context = ApplicationProvider.getApplicationContext()
+    private val g get() = (ctx.applicationContext as FlowApp).graph
+
+    private fun f(id: String, type: String, p: Map<String, String>, msg: String) = FlowDef(id, id, true,
+        nodes = listOf(NodeDef("t", type, params = p), NodeDef("a", "log_event", params = mapOf("message" to msg))), edges = listOf(EdgeDef("e", "t", PORT_OUT, "a", 0)))
+
+    @Test fun batteryChargingAndWifiReceiversFire() = runBlocking {
+        Assume.assumeTrue("solo con -e ext true", InstrumentationRegistry.getArguments().getString("ext") == "true")
+        val flows = listOf(
+            f("l-bat", "trigger_battery", mapOf("op" to "lt", "level" to "50"), "L:bat"),
+            f("l-chg-on", "trigger_charging", mapOf("state" to "connected"), "L:chg-on"),
+            f("l-chg-off", "trigger_charging", mapOf("state" to "disconnected"), "L:chg-off"),
+            f("l-wifi-off", "trigger_wifi", mapOf("state" to "disconnected"), "L:wifi-off"),
+            f("l-wifi-on", "trigger_wifi", mapOf("state" to "connected"), "L:wifi-on"))
+        flows.forEach { g.repo.save(it) }
+        try {
+            val warn = g.syncBackground(ctx)
+            assertNull("servicio de escucha: $warn", warn)
+            val want = setOf("L:bat", "L:chg-on", "L:chg-off", "L:wifi-off", "L:wifi-on")
+            val end = System.currentTimeMillis() + 70_000
+            var seen = emptySet<String>()
+            while (System.currentTimeMillis() < end && !seen.containsAll(want)) {
+                seen = g.repo.logs(100).first().map { it.message }.toSet() intersect want; Thread.sleep(2000)
+            }
+            assertEquals("faltan: ${want - seen}", want, seen)
+        } finally { flows.forEach { g.repo.delete(it.id) }; g.syncBackground(ctx) }
+    }
+}

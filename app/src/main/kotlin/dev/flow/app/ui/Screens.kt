@@ -261,7 +261,7 @@ fun SettingsScreen(graph: Graph, theme: String, accent: Int, onTheme: (String) -
                         } } }
                 Section("02", "Ejecución en segundo plano")
                 Panel { Text("Cada disparador usa el mecanismo mínimo:", style = T.small, color = k.dim)
-                    Text("· Hora, fecha y día: AlarmManager (${if (Scheduler.canExact(ctx)) "exacta" else "aproximada"}) + WorkManager\n· WiFi: callback de red por PendingIntent\n· Bluetooth: receptor del manifiesto\n· Batería, carga y auriculares con cable: servicio en primer plano, solo mientras haya un flujo activo que lo use\n· Tras reiniciar o cambiar la hora, todo se reprograma solo", style = T.small, color = k.ink) }
+                    Text("· Hora, fecha y día: AlarmManager (${if (Scheduler.canExact(ctx)) "exacta" else "aproximada"}) + WorkManager\n· Bluetooth: receptor del manifiesto\n· Ubicación: LocationManager con receptor del manifiesto (60 s / 50 m)\n· Calendario: AlarmManager para el aviso del próximo evento; el calendario se relee cada hora\n· WiFi, batería, carga y auriculares con cable: servicio en primer plano, solo mientras haya un flujo activo que lo use\n· Tras reiniciar o cambiar la hora, todo se reprograma solo", style = T.small, color = k.ink) }
             }
             Section("03", "Notificaciones")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

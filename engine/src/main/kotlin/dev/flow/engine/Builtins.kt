@@ -35,7 +35,7 @@ fun builtinRegistry(): NodeRegistry = NodeRegistry().registerAll(
     NodeSpec.Trigger("trigger_wifi", "Conexión WiFi", "Al conectarse o desconectarse de una red WiFi.",
         listOf(P("ssid", "Nombre de red (vacío = cualquiera)", help = "Leer el nombre exige permiso de ubicación; sin él solo se detecta «cualquier WiFi»."),
             P("state", "Cuando", ParamType.CHOICE, true, "connected", stateChoices)),
-        mechanism = "NetworkCallback con PendingIntent", permissionHint = "ubicación (solo para filtrar por nombre de red)") { p, e ->
+        mechanism = "NetworkCallback en el servicio de escucha", permissionHint = "ubicación (solo para filtrar por nombre de red)") { p, e ->
         e.type == "wifi" && e.data["state"] == p["state"] &&
             (p["ssid"].isNullOrBlank() || e.data["ssid"].equals(p["ssid"], true))
     },

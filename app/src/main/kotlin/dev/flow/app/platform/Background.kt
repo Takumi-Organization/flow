@@ -146,27 +146,6 @@ class BluetoothReceiver : BroadcastReceiver() {
     }
 }
 
-class WifiReceiver : BroadcastReceiver() {
-    override fun onReceive(ctx: Context, i: Intent) {
-        val g = ctx.graph()
-        val ssid = g.env.wifiSsid()
-        val state = if (ssid != null) "connected" else "disconnected"
-        if (g.prefs.wifiState == state && state == "disconnected") return
-        g.prefs.wifiState = state
-        Runner.event(ctx, "wifi", mapOf("state" to state, "ssid" to ssid.orEmpty()))
-    }
-    companion object {
-        private fun pi(ctx: Context) = PendingIntent.getBroadcast(ctx, 4242, Intent(ctx, WifiReceiver::class.java).setAction("dev.flow.WIFI"),
-            PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        fun sync(ctx: Context, needed: Boolean) {
-            val cm = ctx.getSystemService(ConnectivityManager::class.java)
-            val p = pi(ctx)
-            try { cm.unregisterNetworkCallback(p) } catch (_: Exception) {}
-            if (needed) cm.registerNetworkCallback(NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI).build(), p)
-        }
-    }
-}
-
 class TimerReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, i: Intent) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
@@ -186,7 +165,7 @@ class TimerReceiver : BroadcastReceiver() {
 
 /**
  * Servicio en primer plano OPCIONAL: solo existe mientras haya algún flujo activo con un disparador que Android
- * no permite recibir en segundo plano desde el manifiesto (batería, carga, auriculares con cable).
+ * no permite recibir en segundo plano desde el manifiesto (batería, carga, WiFi, auriculares con cable).
  */
 class ListenerService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -209,12 +188,25 @@ class ListenerService : Service() {
         override fun onAudioDevicesAdded(d: Array<out AudioDeviceInfo>) { if (wired(d)) fire(TriggerEvent("headset", mapOf("state" to "connected"))) }
         override fun onAudioDevicesRemoved(d: Array<out AudioDeviceInfo>) { if (wired(d)) fire(TriggerEvent("headset", mapOf("state" to "disconnected"))) }
     }
+    /** WiFi: un NetworkCallback en proceso (los de PendingIntent los libera el sistema a los pocos segundos; medido en emulador API 36). */
+    private var wifiNet: android.net.Network? = null
+    private var wifiSsid: String? = null
+    private val wifi = object : ConnectivityManager.NetworkCallback(FLAG_INCLUDE_LOCATION_INFO) {
+        override fun onCapabilitiesChanged(n: android.net.Network, c: NetworkCapabilities) {
+            @Suppress("DEPRECATION") val raw = (c.transportInfo as? android.net.wifi.WifiInfo)?.ssid?.trim('"')
+            val ssid = if (raw == null || raw == "<unknown ssid>") "" else raw
+            if (wifiNet != n || wifiSsid != ssid) { wifiNet = n; wifiSsid = ssid; fire(TriggerEvent("wifi", mapOf("state" to "connected", "ssid" to ssid))) }
+        }
+        override fun onLost(n: android.net.Network) {
+            if (wifiNet == n) { wifiNet = null; wifiSsid = null; fire(TriggerEvent("wifi", mapOf("state" to "disconnected", "ssid" to ""))) }
+        }
+    }
     private fun graph() = (applicationContext as FlowApp).graph
     private fun fire(e: TriggerEvent) { scope.launch { graph().engine.dispatch(e) } }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val n = NotificationCompat.Builder(this, Channels.SERVICE).setSmallIcon(R.drawable.ic_flow).setContentTitle("Flow escucha eventos")
-            .setContentText("Batería, carga o auriculares con cable tienen automatizaciones activas").setOngoing(true).setContentIntent(launchIntent(this)).build()
+            .setContentText("Batería, carga, WiFi o auriculares con cable tienen automatizaciones activas").setOngoing(true).setContentIntent(launchIntent(this)).build()
         if (Build.VERSION.SDK_INT >= 34) startForeground(7002, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE) else startForeground(7002, n)
         if (!registered) {
             registered = true
@@ -222,6 +214,7 @@ class ListenerService : Service() {
             registerReceiver(battery, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             registerReceiver(power, IntentFilter().apply { addAction(Intent.ACTION_POWER_CONNECTED); addAction(Intent.ACTION_POWER_DISCONNECTED) })
             getSystemService(AudioManager::class.java).registerAudioDeviceCallback(audio, null)
+            getSystemService(ConnectivityManager::class.java).registerNetworkCallback(NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI).build(), wifi)
         }
         return START_STICKY
     }
@@ -230,13 +223,14 @@ class ListenerService : Service() {
         if (registered) {
             runCatching { unregisterReceiver(battery) }; runCatching { unregisterReceiver(power) }
             runCatching { getSystemService(AudioManager::class.java).unregisterAudioDeviceCallback(audio) }
+            runCatching { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(wifi) }
         }
         scope.cancel(); super.onDestroy()
     }
     override fun onBind(i: Intent?): IBinder? = null
 
     companion object {
-        val TYPES = setOf("trigger_battery", "trigger_charging", "trigger_headset")
+        val TYPES = setOf("trigger_battery", "trigger_charging", "trigger_headset", "trigger_wifi")
         /** Devuelve un aviso si Android no deja arrancar el servicio. */
         fun sync(ctx: Context, needed: Boolean): String? {
             val i = Intent(ctx, ListenerService::class.java)
