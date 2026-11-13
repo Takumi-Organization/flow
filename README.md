@@ -9,12 +9,12 @@ CUANDO (disparador) / SI (condición) / ENTONCES (acción) en un lienzo de nodos
 ## Compilar y probar
 
 ```
-./gradlew :engine:test          # pruebas JVM del motor (43)
+./gradlew :engine:test          # pruebas JVM del motor (48)
 ./gradlew :app:assembleDebug    # APK de depuración
 ```
 
 Requiere JDK 17+ y el SDK de Android (`local.properties` con `sdk.dir`, no se versiona).
-`DeviceTest.kt` se ejecutó en un emulador API 36: 8 de 9 pasan, 1 omitida (ver docs/ESTADO.md).
+Las pruebas instrumentadas (`:app:connectedDebugAndroidTest`, emulador API 36) cubren acciones, Room, alarmas, calendario real y pellizco; `scripts/verificar-emulador.sh` ejecuta además las que necesitan estímulos externos (batería, WiFi, ubicación). Ver docs/ESTADO.md.
 
 ## Documentación
 

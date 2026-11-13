@@ -85,6 +85,47 @@ class DeviceTriggersTest {
         }
     }
 
+
+
+    @Test fun bootCompletedRebuildsAlarms() = runBlocking {
+        val f = FlowDef("boot-e2e", "Boot e2e", true, nodes = listOf(NodeDef("t", "trigger_time", params = mapOf("at" to "03:21")), NodeDef("a", "log_event", params = mapOf("message" to "x"))),
+            edges = listOf(EdgeDef("e", "t", PORT_OUT, "a", 0)))
+        try {
+            g.repo.delete("boot-e2e"); Scheduler.rescheduleAll(ctx)
+            assertFalse(g.prefs.alarmKeys.contains("boot-e2e|t"))
+            g.repo.save(f)                       // flujo activo sin alarma programada: como tras un reinicio
+            assertFalse(g.prefs.alarmKeys.contains("boot-e2e|t"))
+            // Android no deja a un proceso ajeno (ni al shell) enviar BOOT_COMPLETED: se ejecuta el receptor tal cual y se comprueba aparte que el manifiesto lo registra.
+            val recv = shell("cmd package query-receivers --brief -a android.intent.action.BOOT_COMPLETED")
+            assertTrue("el manifiesto registra BootReceiver para BOOT_COMPLETED: $recv", recv.contains("dev.flow.app/.platform.BootReceiver") || recv.contains("dev.flow.app/dev.flow.app.platform.BootReceiver"))
+            val out = "directo"
+            BootReceiver().onReceive(ctx, android.content.Intent(android.content.Intent.ACTION_BOOT_COMPLETED))
+            val end = System.currentTimeMillis() + 15_000
+            while (System.currentTimeMillis() < end && !g.prefs.alarmKeys.contains("boot-e2e|t")) Thread.sleep(300)
+            assertTrue("BootReceiver debe reprogramar la alarma ($out)", g.prefs.alarmKeys.contains("boot-e2e|t"))
+            assertTrue("la alarma existe en AlarmManager", shell("dumpsys alarm").contains("dev.flow.app"))
+        } finally { g.repo.delete("boot-e2e"); Scheduler.rescheduleAll(ctx) }
+    }
+
+    @Test fun exportImportRoundTripInRealRoom() = runBlocking {
+        val f = FlowDef("exp-e2e", "Exportar e2e", true, "desc", listOf(NodeDef("t", "trigger_manual", 1f, 2f), NodeDef("a", "log_event", 3f, 4f, mapOf("message" to "{{v}}"))),
+            listOf(EdgeDef("e", "t", PORT_OUT, "a", 0)),
+            VarType.values().map { VarDef("v_" + it.name.lowercase(), it, when (it) { VarType.NUMBER -> "2"; VarType.BOOLEAN -> "true"; VarType.DATE -> "2026-01-02"; VarType.TIME -> "07:30"; VarType.LIST -> "a,b"; else -> "x" }, true) } + VarDef("v", VarType.TEXT))
+        g.repo.save(f)
+        val before = g.repo.flows.first().size
+        try {
+            val json = g.repo.exportJson(listOf("exp-e2e"))
+            assertTrue(json.contains("\"version\": 1"))
+            val r = g.repo.importJson(json)
+            assertEquals(1, r.flows.size); assertTrue(r.warnings.isEmpty())
+            val imp = g.repo.get(r.flows[0].id)!!
+            assertFalse("se importa desactivado", imp.enabled); assertNotEquals("exp-e2e", imp.id)
+            assertEquals(f.variables.sortedBy { it.name }, imp.variables.sortedBy { it.name }); assertEquals(f.nodes.map { it.type to it.params }, imp.nodes.map { it.type to it.params })
+            assertEquals(before + 1, g.repo.flows.first().size)
+            g.repo.delete(imp.id)
+        } finally { g.repo.delete("exp-e2e") }
+    }
+
     /** Requiere que el emulador reciba `emu geo fix` desde fuera: primero fuera de la zona, luego dentro. Se salta si no se pide. */
     @Test fun locationTriggerFiresOnEnteringZone() = runBlocking {
         val args = InstrumentationRegistry.getArguments()

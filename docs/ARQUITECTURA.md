@@ -10,6 +10,6 @@
 
 ## App (`:app`)
 - Room: flows, nodes, edges, variables, valores persistentes, runs, run_nodes, event_log (con poda).
-- Ejecución por disparador: hora/fecha/día → AlarmManager (exacta si hay permiso) + WorkManager; WiFi → NetworkCallback con PendingIntent; Bluetooth → BroadcastReceiver del manifiesto; batería/carga/auriculares con cable → `ListenerService` en primer plano, solo mientras haya flujos activos que lo necesiten; reinicio/cambio de hora → `BootReceiver` reprograma.
+- Ejecución por disparador: hora/fecha/día → AlarmManager (exacta si hay permiso) + WorkManager; calendario → AlarmManager para el aviso del próximo evento (CalendarContract, relectura horaria); ubicación → LocationManager con PendingIntent al receptor del manifiesto; Bluetooth → BroadcastReceiver del manifiesto; WiFi, batería, carga y auriculares con cable → `ListenerService` en primer plano, solo mientras haya flujos activos que lo necesiten; reinicio/cambio de hora → `BootReceiver` reprograma.
 - Acciones: notificación, sonido, temporizador, abrir app (alternativa por notificación en segundo plano), leer calendario, No molestar, volumen del sistema, esperar, variables, registrar evento, ejecutar otro flujo. Todas ejecutan la API real y devuelven `Unavailable` con la razón si falta permiso o Android lo bloquea.
 - No se ofrece (Android lo impide a apps normales): activar/desactivar WiFi, Bluetooth o datos; volumen interno de otras apps; abrir apps en segundo plano sin toque.

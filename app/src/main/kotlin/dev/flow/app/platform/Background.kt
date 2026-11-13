@@ -126,9 +126,10 @@ class AlarmReceiver : BroadcastReceiver() {
 /** Arranque, cambio de hora/zona y actualización de la app: se vuelven a programar alarmas y escuchas. */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, i: Intent) {
+        android.util.Log.i("FlowBoot", "recibido ${i.action}")
         val pending = goAsync()
         CoroutineScope(Dispatchers.Default).launch {
-            try { ctx.graph().syncBackground(ctx) } finally { pending.finish() }
+            try { ctx.graph().syncBackground(ctx); android.util.Log.i("FlowBoot", "reprogramado") } catch (e: Exception) { android.util.Log.e("FlowBoot", "fallo al reprogramar", e) } finally { pending?.finish() }
         }
     }
 }

@@ -288,7 +288,7 @@ fun SettingsScreen(graph: Graph, theme: String, accent: Int, onTheme: (String) -
             Section("07", "Lo que Android NO permite")
             Panel(accent = k.faint) {
                 Text("Estas acciones no existen en Flow porque Android las bloquea para apps normales, y por eso no las simulamos:", style = T.small, color = k.dim); Spacer(Modifier.height(4.dp))
-                Text("· Activar o desactivar WiFi, Bluetooth o datos móviles (bloqueado desde Android 10)\n· Controlar el volumen interno de otras apps\n· Abrir apps desde segundo plano sin tocar (Flow muestra una notificación para abrirla)\n· Ejecutar código arbitrario o controlar otras apps\n· Disparador de ubicación y de evento de calendario: pendientes de una versión posterior", style = T.small, color = k.ink)
+                Text("· Activar o desactivar WiFi, Bluetooth o datos móviles (bloqueado desde Android 10)\n· Controlar el volumen interno de otras apps\n· Abrir apps desde segundo plano sin tocar (Flow muestra una notificación para abrirla)\n· Ejecutar código arbitrario o controlar otras apps", style = T.small, color = k.ink)
             }
             Section("08", "Ayuda")
             FButton("Ver el tutorial", openTutorial)
