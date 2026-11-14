@@ -26,4 +26,4 @@ Las pruebas instrumentadas (`:app:connectedDebugAndroidTest`, emulador API 36) c
 Diseño: sistema propio (Inter, esquinas continuas, tríada coral/violeta/menta, acento elegible) y capturas de las pantallas en [docs/capturas/](docs/capturas/), con el detalle en [docs/ESTADO.md](docs/ESTADO.md#rediseño-visual-2026-11-14).
 
 ## Estado de instalación
-Compila y pasa pruebas y lint (2026-11-15), pero **no está instalada en el móvil físico**: no estaba conectado. Comando exacto en [docs/ESTADO.md](docs/ESTADO.md#instalación-en-el-móvil).
+Instalada en el móvil 78af40b4 el 2026-11-15 (debug); arranca sin crash. Bluetooth, auriculares y ubicación en hardware real sin verificar. Comando en [docs/ESTADO.md](docs/ESTADO.md#instalación-en-el-móvil).

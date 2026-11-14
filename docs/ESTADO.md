@@ -27,7 +27,7 @@
 ## No verificado
 - **Hardware real**: el aviso `ACL_CONNECTED` del proceso Bluetooth del sistema y el `AudioDeviceCallback` con un auricular de cable o USB reales. El emulador no los simula y esas difusiones están protegidas (ni el shell puede enviarlas).
 - **Otro nivel de API**: solo hay instalada la imagen `android-36 google_apis_playstore`; no se descargó ninguna otra. `minSdk` y comportamiento en Android 10–15 sin probar.
-- **Móvil físico 78af40b4: NO instalada.** El 2026-11-15 `adb devices` no lista ningún dispositivo (cable, depuración USB o autorización pendientes). APK listo, ver «Instalación».
+- **Móvil físico 78af40b4**: instalada el 2026-11-15 (APK de depuración, `adb install -r`, datos conservados); arranca y `MainActivity` queda en primer plano sin `AndroidRuntime`/`FATAL` en logcat. Sin verificar en el móvil real: Bluetooth, auriculares, ubicación con «Permitir siempre» y disparadores en general (solo se abrió la app).
 - El flujo de conceder «Permitir siempre» a mano en un móvil real (en el emulador se concede con `pm grant`).
 - Sonido audible.
 
@@ -53,7 +53,7 @@
 - `app-release-unsigned.apk` no es instalable (sin firma; no hay almacén de claves de lanzamiento en el repositorio, a propósito).
 
 ## Instalación en el móvil
-APK: `app/build/outputs/apk/debug/app-debug.apk` (14 MB). Con el móvil conectado y la depuración USB autorizada:
+Hecha el 2026-11-15. Para repetirla, APK: `app/build/outputs/apk/debug/app-debug.apk` (14 MB). Con el móvil conectado y la depuración USB autorizada:
 ```
 adb -s 78af40b4 install -r ~/Proyectos/flow/app/build/outputs/apk/debug/app-debug.apk
 adb -s 78af40b4 shell monkey -p dev.flow.app -c android.intent.category.LAUNCHER 1
