@@ -30,3 +30,15 @@ $A shell am instrument -w -e geo true -e class dev.flow.app.DeviceTriggersTest#l
 sleep 25; $A emu geo fix -4.7 37.9 >/dev/null; $A emu geo fix -4.5 37.5 >/dev/null
 sleep 45; $A emu geo fix -4.5001 37.5001 >/dev/null
 wait; tail -3 /tmp/flow-geo.out
+
+echo "== Reinicio real: preparar flujos activos, anotar estado, reiniciar y comparar (adb reboot: solo con el emulador en exclusiva)"
+if [ "${REINICIO:-0}" = "1" ]; then
+  $A shell pm grant dev.flow.app android.permission.ACCESS_BACKGROUND_LOCATION
+  $A shell am instrument -w -e prep true -e class dev.flow.app.DeviceRebootPrepTest#prepare $R | tail -2
+  $A shell am start -n dev.flow.app/.MainActivity >/dev/null; sleep 3   # la app no debe quedar en estado «detenida»
+  est() { echo "alarmas: $($A shell dumpsys alarm | grep -c 'dev.flow.app')"; $A shell dumpsys activity services dev.flow.app | grep -c ListenerService | sed 's/^/servicio: /'; echo "ubicacion: $($A shell dumpsys location | grep -c 'dev.flow.app')"; }
+  echo "antes:"; est
+  $A reboot; $A wait-for-device; until [ "$($A shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; do sleep 3; done; sleep 20
+  echo "despues (sin abrir la app):"; est
+  $A shell am instrument -w -e cleanup true -e class dev.flow.app.DeviceRebootPrepTest#cleanup $R | tail -2
+fi

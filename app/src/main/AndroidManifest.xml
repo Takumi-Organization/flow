@@ -9,7 +9,6 @@
     <uses-permission android:name="android.permission.READ_CALENDAR"/>
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
 
@@ -31,7 +30,8 @@
         <receiver android:name=".platform.AlarmReceiver" android:exported="false"/>
         <receiver android:name=".platform.TimerReceiver" android:exported="false"/>
         <receiver android:name=".platform.LocationReceiver" android:exported="false"/>
-        <receiver android:name=".platform.BootReceiver" android:exported="true">
+        <!-- Solo recibe difusiones del sistema (protegidas): no hace falta exportarlo. -->
+        <receiver android:name=".platform.BootReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
                 <action android:name="android.intent.action.TIME_SET"/>
@@ -40,6 +40,7 @@
                 <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED"/>
             </intent-filter>
         </receiver>
+        <!-- Exportado porque el aviso ACL lo envía el proceso de Bluetooth (otro uid). Las acciones ACL son difusiones protegidas: una app no puede falsificarlas; el receptor además descarta cualquier otra acción. -->
         <receiver android:name=".platform.BluetoothReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.bluetooth.device.action.ACL_CONNECTED"/>

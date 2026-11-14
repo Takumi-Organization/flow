@@ -231,6 +231,8 @@ fun RunDetailScreen(graph: Graph, runId: String, onBack: () -> Unit) {
 }
 
 // ───────────────────────────── AJUSTES ─────────────────────────────
+private const val MAX_IMPORT_BYTES = 5 * 1024 * 1024
+
 @Composable
 fun SettingsScreen(graph: Graph, theme: String, accent: Int, onTheme: (String) -> Unit, onAccent: (Int) -> Unit, openTutorial: () -> Unit) {
     val ctx = LocalContext.current; val scope = rememberCoroutineScope()
@@ -244,7 +246,7 @@ fun SettingsScreen(graph: Graph, theme: String, accent: Int, onTheme: (String) -
         if (uri != null) scope.launch { val text = graph.repo.exportJson(flows.map { it.id }); ctx.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) }; msg.showSnackbar("Exportados ${flows.size} flujos (formato v${FlowExport.VERSION})") } }
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
-            try { val text = ctx.contentResolver.openInputStream(uri)?.use { String(it.readBytes()) } ?: error("No se pudo leer el fichero")
+            try { val text = ctx.contentResolver.openInputStream(uri)?.use { ins -> val b = ins.readNBytes(MAX_IMPORT_BYTES + 1); if (b.size > MAX_IMPORT_BYTES) throw ImportException("El fichero es demasiado grande para ser una exportación de Flow"); String(b) } ?: error("No se pudo leer el fichero")
                 val r = graph.repo.importJson(text); msg.showSnackbar("Importados ${r.flows.size} flujos (desactivados)" + if (r.warnings.isNotEmpty()) " · ${r.warnings.size} avisos: ${r.warnings.first()}" else "")
             } catch (e: ImportException) { msg.showSnackbar(e.message ?: "Importación fallida") } catch (e: Exception) { msg.showSnackbar("Importación fallida: ${e.message}") } } }
     Box(Modifier.fillMaxSize()) {

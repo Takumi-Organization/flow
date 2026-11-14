@@ -136,6 +136,7 @@ class BootReceiver : BroadcastReceiver() {
 
 class BluetoothReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, i: Intent) {
+        if (i.action != BluetoothDevice.ACTION_ACL_CONNECTED && i.action != BluetoothDevice.ACTION_ACL_DISCONNECTED) return
         val dev = if (Build.VERSION.SDK_INT >= 33) i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
                   else @Suppress("DEPRECATION") i.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
         val state = if (i.action == BluetoothDevice.ACTION_ACL_CONNECTED) "connected" else "disconnected"

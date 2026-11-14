@@ -82,7 +82,49 @@ class DeviceTriggersTest {
             assertTrue(runBlocking { g.repo.logs(20).first() }.any { it.message == "Aviso: Flow e2e reunión" })
         } finally {
             g.repo.delete("cal-e2e"); Scheduler.rescheduleAll(ctx); ctx.contentResolver.delete(evUri, null, null)
+            dropTestCalendar()
         }
+    }
+
+    /** Borra el calendario local de pruebas (y con él sus eventos). */
+    private fun dropTestCalendar(): Int = ctx.contentResolver.delete(CalendarContract.Calendars.CONTENT_URI.buildUpon()
+        .appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true").appendQueryParameter(CalendarContract.Calendars.ACCOUNT_NAME, "flowtest")
+        .appendQueryParameter(CalendarContract.Calendars.ACCOUNT_TYPE, CalendarContract.ACCOUNT_TYPE_LOCAL).build(), null, null)
+
+    @Test fun testCalendarCanBeDeleted() {
+        localCalendar()
+        assertTrue(dropTestCalendar() >= 1)
+        ctx.contentResolver.query(CalendarContract.Calendars.CONTENT_URI, arrayOf(CalendarContract.Calendars._ID), "${CalendarContract.Calendars.ACCOUNT_NAME}=?", arrayOf("flowtest"), null)!!.use { assertEquals(0, it.count) }
+    }
+
+    @Test fun bluetoothReceiverFiresFlowAndIgnoresForeignActions() = runBlocking {
+        val f = FlowDef("bt-e2e", "BT e2e", true, nodes = listOf(NodeDef("t", "trigger_bluetooth", params = mapOf("state" to "connected")),
+            NodeDef("a", "log_event", params = mapOf("message" to "BT:{{trigger.state}}"))), edges = listOf(EdgeDef("e", "t", PORT_OUT, "a", 0)))
+        g.repo.save(f)
+        try {
+            // acción ajena (como haría una app maliciosa con un intent explícito): se descarta
+            BluetoothReceiver().onReceive(ctx, android.content.Intent("dev.flow.FALSA"))
+            Thread.sleep(3000)
+            assertTrue(g.repo.logs(50).first().none { it.message.startsWith("BT:") })
+            // el aviso real del sistema (ACL_CONNECTED) dentro del proceso de la app
+            BluetoothReceiver().onReceive(ctx, android.content.Intent(android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED))
+            val end = System.currentTimeMillis() + 20_000
+            while (System.currentTimeMillis() < end && g.repo.logs(50).first().none { it.message == "BT:connected" }) Thread.sleep(500)
+            assertTrue(g.repo.logs(50).first().any { it.message == "BT:connected" })
+        } finally { g.repo.delete("bt-e2e") }
+    }
+
+    @Test fun headsetEventPathRunsFlowViaWorkManager() = runBlocking {
+        val f = FlowDef("hs-e2e", "HS e2e", true, nodes = listOf(NodeDef("t", "trigger_headset", params = mapOf("state" to "connected")),
+            NodeDef("a", "log_event", params = mapOf("message" to "HS:{{trigger.state}}"))), edges = listOf(EdgeDef("e", "t", PORT_OUT, "a", 0)))
+        g.repo.save(f)
+        try {
+            // el AudioDeviceCallback del servicio llama a engine.dispatch; aquí se recorre el mismo camino con el evento que genera
+            Runner.event(ctx, "headset", mapOf("state" to "connected"))
+            val end = System.currentTimeMillis() + 20_000
+            while (System.currentTimeMillis() < end && g.repo.logs(50).first().none { it.message == "HS:connected" }) Thread.sleep(500)
+            assertTrue(g.repo.logs(50).first().any { it.message == "HS:connected" })
+        } finally { g.repo.delete("hs-e2e") }
     }
 
 
@@ -176,5 +218,31 @@ class DeviceListenersTest {
             }
             assertEquals("faltan: ${want - seen}", want, seen)
         } finally { flows.forEach { g.repo.delete(it.id) }; g.syncBackground(ctx) }
+    }
+}
+
+/** Prepara (y limpia) flujos activos para comprobar a mano la reprogramación tras un reinicio real: `-e prep true` / `-e cleanup true`. */
+@RunWith(AndroidJUnit4::class)
+class DeviceRebootPrepTest {
+    @get:Rule val perms: GrantPermissionRule = GrantPermissionRule.grant(Manifest.permission.POST_NOTIFICATIONS, Manifest.permission.ACCESS_FINE_LOCATION)
+    private val ctx: Context = ApplicationProvider.getApplicationContext()
+    private val g get() = (ctx.applicationContext as FlowApp).graph
+    private val args get() = InstrumentationRegistry.getArguments()
+    private val ids = listOf("reb-time", "reb-batt", "reb-geo")
+
+    @Test fun prepare() = runBlocking {
+        Assume.assumeTrue(args.getString("prep") == "true")
+        fun f(id: String, type: String, p: Map<String, String>) = FlowDef(id, id, true, nodes = listOf(NodeDef("t", type, params = p), NodeDef("a", "log_event", params = mapOf("message" to "$id"))), edges = listOf(EdgeDef("e", "t", PORT_OUT, "a", 0)))
+        g.repo.save(f("reb-time", "trigger_time", mapOf("at" to "03:33")))
+        g.repo.save(f("reb-batt", "trigger_battery", mapOf("op" to "lt", "level" to "20")))
+        g.repo.save(f("reb-geo", "trigger_location", mapOf("lat" to "37.5", "lon" to "-4.5", "radius" to "200")))
+        g.syncBackground(ctx)
+        Unit
+    }
+
+    @Test fun cleanup() = runBlocking {
+        Assume.assumeTrue(args.getString("cleanup") == "true")
+        ids.forEach { g.repo.delete(it) }; g.syncBackground(ctx)
+        Unit
     }
 }
