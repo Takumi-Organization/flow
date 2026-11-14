@@ -10,11 +10,15 @@ CUANDO (disparador) / SI (condición) / ENTONCES (acción) en un lienzo de nodos
 
 ```
 ./gradlew :engine:test          # pruebas JVM del motor (48)
+./gradlew :app:testDebugUnitTest # pruebas JVM del catálogo de presets (6)
 ./gradlew :app:assembleDebug    # APK de depuración
 ```
 
 Requiere JDK 17+ y el SDK de Android (`local.properties` con `sdk.dir`, no se versiona).
 Las pruebas instrumentadas (`:app:connectedDebugAndroidTest`, emulador API 36) cubren acciones, Room, alarmas, calendario real y pellizco; `scripts/verificar-emulador.sh` ejecuta además las que necesitan estímulos externos (batería, WiFi, ubicación). Ver docs/ESTADO.md.
+
+## Presets
+70 plantillas listas para usar en 10 categorías (sueño y noche, trabajo y estudio, coche, batería, auriculares y Bluetooth, casa y WiFi, ubicación y horarios, privacidad, pantalla y sonido, rutinas). Se definen en `app/.../ui/Templates.kt` y `PresetsExtra.kt` y solo usan nodos que existen. La pestaña Presets tiene búsqueda, categorías con contador, filtro «sin permisos especiales» y paginación. Ver [docs/ESTADO.md](docs/ESTADO.md#presets-2026-11-15).
 
 ## Documentación
 

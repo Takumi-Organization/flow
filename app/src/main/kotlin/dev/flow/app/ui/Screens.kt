@@ -260,15 +260,35 @@ fun triggerName(t: String) = when (t) { "manual" -> "manual"; "debug" -> "prueba
 fun LibraryScreen(graph: Graph, openEditor: (String) -> Unit) {
     val scope = rememberCoroutineScope(); val flows by graph.repo.flows.collectAsState(emptyList()); val kk = k
     var cat by remember { mutableStateOf<String?>(null) }
-    Screen("Presets", "Ejemplos reales y editables. Se cargan apagados.") {
-        Spacer(Modifier.height(18.dp))
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Chip("Todos", cat == null, { cat = null }); Templates.map { it.category }.distinct().forEach { c -> Chip(c, cat == c, { cat = c }) }
+    var query by remember { mutableStateOf("") }
+    var noPerms by remember { mutableStateOf(false) }
+    var shown by remember { mutableIntStateOf(PAGE) }
+    val cats = remember { Templates.groupingBy { it.category }.eachCount() }
+    val q = query.trim().lowercase()
+    val matches = remember(cat, q, noPerms) {
+        Templates.filter { t ->
+            (cat == null || t.category == cat) && (!noPerms || t.flow.nodes.none { capsFor(it.type).isNotEmpty() }) &&
+                (q.isEmpty() || q.split(' ').all { w -> (t.title + " " + t.summary + " " + t.category + " " + t.flow.nodes.mapNotNull { graph.registry[it.type]?.title }.joinToString(" ")).lowercase().contains(w) })
         }
-        Spacer(Modifier.height(14.dp))
-        Templates.filter { cat == null || it.category == cat }.forEachIndexed { i, t ->
+    }
+    Screen("Presets", "${Templates.size} ejemplos reales y editables. Se cargan apagados.") {
+        Spacer(Modifier.height(18.dp))
+        FField(query, { query = it; shown = PAGE }, "Buscar (batería, coche, WiFi, noche…)")
+        Spacer(Modifier.height(12.dp))
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip("Todos · ${Templates.size}", cat == null, { cat = null; shown = PAGE }); cats.forEach { (c, n) -> Chip("$c · $n", cat == c, { cat = c; shown = PAGE }) }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip("Sin permisos especiales", noPerms, { noPerms = !noPerms; shown = PAGE })
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(if (matches.size == Templates.size) "Mostrando todos" else "${matches.size} resultado${if (matches.size == 1) "" else "s"}", style = T.small, color = kk.muted)
+        Spacer(Modifier.height(6.dp))
+        if (matches.isEmpty()) EmptyHint("Sin resultados", "Prueba otra palabra, quita el filtro de categoría o empieza desde cero.")
+        matches.take(shown).forEachIndexed { i, t ->
             val have = flows.any { it.templateId == t.id }; val tone = flowTone(t.id, kk)
-            Panel(Modifier.padding(vertical = 7.dp).stagger(i), accent = tone) {
+            Panel(Modifier.padding(vertical = 7.dp).stagger(i % PAGE), accent = tone) {
                 Label(t.category, color = tone)
                 Text(t.title, style = T.h1.copy(fontSize = 26.sp, lineHeight = 30.sp), color = kk.ink, modifier = Modifier.padding(top = 4.dp))
                 MiniPatch(t.flow, graph.registry, Modifier.fillMaxWidth().height(84.dp).padding(vertical = 10.dp).clip(Sq20).background(kk.paper.copy(alpha = .5f)), lit = true, tone = tone)
@@ -281,10 +301,16 @@ fun LibraryScreen(graph: Graph, openEditor: (String) -> Unit) {
                 FButton(if (have) "Cargar otra copia" else "Cargar y editar", { scope.launch { val f = instantiate(t); graph.repo.save(f); openEditor(f.id) } }, Modifier.fillMaxWidth(), primary = !have)
             }
         }
+        if (matches.size > shown) {
+            Spacer(Modifier.height(10.dp))
+            FButton("Mostrar más (${matches.size - shown})", { shown += PAGE }, Modifier.fillMaxWidth())
+        }
         Spacer(Modifier.height(10.dp))
         FButton("Empezar desde cero", { scope.launch { val f = blankFlow("Mi flujo"); graph.repo.save(f); openEditor(f.id) } }, Modifier.fillMaxWidth())
     }
 }
+
+private const val PAGE = 10
 
 fun instantiate(t: Template): FlowDef {
     val map = t.flow.nodes.associate { it.id to FlowRepository.uuid().take(8) }

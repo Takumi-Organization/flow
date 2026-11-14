@@ -4,12 +4,12 @@ import dev.flow.engine.*
 
 data class Template(val id: String, val category: String, val title: String, val summary: String, val flow: FlowDef)
 
-private fun n(id: String, type: String, x: Float, y: Float, vararg p: Pair<String, String>, onError: String = "stop", label: String = "") =
+internal fun n(id: String, type: String, x: Float, y: Float, vararg p: Pair<String, String>, onError: String = "stop", label: String = "") =
     NodeDef(id, type, x * 1.32f, y, mapOf(*p), label, onError = onError)
-private fun e(a: String, b: String, port: String = PORT_OUT, order: Int = 0) = EdgeDef("$a-$port-$b", a, port, b, order)
+internal fun e(a: String, b: String, port: String = PORT_OUT, order: Int = 0) = EdgeDef("$a-$port-$b", a, port, b, order)
 
 /** Ejemplos reales: todos usan nodos que se ejecutan, sin simulaciones. Son plantillas editables. */
-val Templates: List<Template> = listOf(
+private val baseTemplates: List<Template> = listOf(
     Template("morning", "Rutinas", "Rutina matutina", "A las 07:30 (lun–vie): saludo, próximos eventos del calendario y recordatorio de objetivos.",
         FlowDef("morning", "Rutina matutina", description = "Empieza el día con tu agenda y tus objetivos.",
             variables = listOf(VarDef("eventos", VarType.LIST), VarDef("objetivos", VarType.TEXT, "1) Lo más importante  2) Estudiar 1 h  3) Moverme")),
@@ -23,7 +23,7 @@ val Templates: List<Template> = listOf(
                 n("goals", "notify", 1240f, 200f, "title" to "Tus objetivos", "text" to "{{objetivos}}"),
             ),
             edges = listOf(e("t", "hi"), e("hi", "cal"), e("cal", "any"), e("any", "ev", PORT_TRUE), e("any", "none", PORT_FALSE), e("ev", "goals"), e("none", "goals")))),
-    Template("focus", "Concentración", "Modo concentración", "Manual: cuenta la sesión, activa «No molestar» si lo permites, lanza un temporizador de 25 min y lo registra.",
+    Template("focus", "Trabajo y estudio", "Modo concentración", "Manual: cuenta la sesión, activa «No molestar» si lo permites, lanza un temporizador de 25 min y lo registra.",
         FlowDef("focus", "Modo concentración", description = "Sesiones de trabajo con temporizador.",
             variables = listOf(VarDef("sesiones", VarType.NUMBER, "0", persistent = true)),
             nodes = listOf(
@@ -35,7 +35,7 @@ val Templates: List<Template> = listOf(
                 n("log", "log_event", 1190f, 200f, "message" to "Sesión de concentración nº {{sesiones}} iniciada a las {{now.time}}"),
             ),
             edges = listOf(e("t", "count"), e("count", "dnd"), e("dnd", "msg"), e("msg", "timer"), e("timer", "log")))),
-    Template("night", "Descanso", "Modo nocturno", "A las 22:30: recordatorio, silencia lo no esencial, baja el volumen y avisa si no estás cargando.",
+    Template("night", "Sueño y noche", "Modo nocturno", "A las 22:30: recordatorio, silencia lo no esencial, baja el volumen y avisa si no estás cargando.",
         FlowDef("night", "Modo nocturno", description = "Prepara el móvil y la cabeza para dormir.",
             nodes = listOf(
                 n("t", "trigger_time", 40f, 200f, "at" to "22:30"),
@@ -47,7 +47,7 @@ val Templates: List<Template> = listOf(
                 n("ok", "log_event", 1190f, 290f, "message" to "Modo nocturno aplicado; ya estaba cargando"),
             ),
             edges = listOf(e("t", "rem"), e("rem", "dnd"), e("dnd", "vol"), e("vol", "chg"), e("chg", "plug", PORT_TRUE), e("chg", "ok", PORT_FALSE)))),
-    Template("battery", "Batería", "Ahorro de batería", "Cuando la batería baja de 20 %: avisa y recomienda qué hacer (solo si no estás cargando).",
+    Template("battery", "Batería y energía", "Ahorro de batería", "Cuando la batería baja de 20 %: avisa y recomienda qué hacer (solo si no estás cargando).",
         FlowDef("battery", "Ahorro de batería", description = "Aviso con recomendaciones al bajar del umbral.",
             nodes = listOf(
                 n("t", "trigger_battery", 40f, 200f, "op" to "lt", "level" to "20"),
@@ -56,7 +56,7 @@ val Templates: List<Template> = listOf(
                 n("log", "log_event", 730f, 200f, "message" to "Aviso de batería baja ({{battery}} %)"),
             ),
             edges = listOf(e("t", "chg"), e("chg", "msg", PORT_TRUE), e("msg", "log")))),
-    Template("headphones", "Audio", "Conexión de auriculares", "Al enchufar auriculares con cable: avisa y ajusta el volumen multimedia (configurable).",
+    Template("headphones", "Auriculares y Bluetooth", "Conexión de auriculares", "Al enchufar auriculares con cable: avisa y ajusta el volumen multimedia (configurable).",
         FlowDef("headphones", "Conexión de auriculares", description = "Acción al conectar auriculares con cable/USB-C.",
             nodes = listOf(
                 n("t", "trigger_headset", 40f, 200f, "state" to "connected"),
@@ -64,7 +64,7 @@ val Templates: List<Template> = listOf(
                 n("msg", "notify", 500f, 200f, "title" to "Auriculares conectados", "text" to "Volumen multimedia al 40 %."),
             ),
             edges = listOf(e("t", "vol"), e("vol", "msg")))),
-    Template("bluetooth", "Audio", "Altavoz o auriculares Bluetooth", "Al conectarse cualquier dispositivo Bluetooth: muestra cuál y registra el evento.",
+    Template("bluetooth", "Auriculares y Bluetooth", "Altavoz o auriculares Bluetooth", "Al conectarse cualquier dispositivo Bluetooth: muestra cuál y registra el evento.",
         FlowDef("bluetooth", "Bluetooth conectado", description = "Reacciona a un dispositivo Bluetooth (indica su nombre para filtrar).",
             nodes = listOf(
                 n("t", "trigger_bluetooth", 40f, 200f, "state" to "connected", "device" to ""),
@@ -72,7 +72,7 @@ val Templates: List<Template> = listOf(
                 n("log", "log_event", 500f, 200f, "message" to "Bluetooth conectado: {{trigger.device}}"),
             ),
             edges = listOf(e("t", "msg"), e("msg", "log")))),
-    Template("meeting", "Agenda", "Antes de una reunión", "10 min antes de un evento del calendario cuyo título contenga «reunión»: avisa con el título y la hora.",
+    Template("meeting", "Trabajo y estudio", "Antes de una reunión", "10 min antes de un evento del calendario cuyo título contenga «reunión»: avisa con el título y la hora.",
         FlowDef("meeting", "Antes de una reunión", description = "Recordatorio previo a eventos del calendario (ajusta el filtro del título).",
             nodes = listOf(
                 n("t", "trigger_calendar", 40f, 200f, "minutes" to "10", "title" to "reunión"),
@@ -80,7 +80,7 @@ val Templates: List<Template> = listOf(
                 n("log", "log_event", 500f, 200f, "message" to "Aviso previo: {{trigger.title}}"),
             ),
             edges = listOf(e("t", "msg"), e("msg", "log")))),
-    Template("arrive", "Lugares", "Llegar a un sitio", "Al entrar en una zona (elige el punto con «Usar mi ubicación actual»): avisa y registra la llegada.",
+    Template("arrive", "Ubicación y horarios", "Llegar a un sitio", "Al entrar en una zona (elige el punto con «Usar mi ubicación actual»): avisa y registra la llegada.",
         FlowDef("arrive", "Llegar a un sitio", description = "Acción al entrar en una zona circular. Edita latitud, longitud y radio.",
             nodes = listOf(
                 n("t", "trigger_location", 40f, 200f, "lat" to "37.8882", "lon" to "-4.7794", "radius" to "150", "transition" to "enter"),
@@ -89,3 +89,6 @@ val Templates: List<Template> = listOf(
             ),
             edges = listOf(e("t", "msg"), e("msg", "log")))),
 )
+
+/** Catálogo completo: las plantillas base más las de [extraTemplates] (ver PresetsExtra.kt). */
+val Templates: List<Template> = baseTemplates + extraTemplates
