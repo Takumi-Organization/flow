@@ -14,7 +14,7 @@ $A shell appops set dev.flow.app SCHEDULE_EXACT_ALARM allow
 $A shell am instrument -w -e class dev.flow.app.DeviceTest#timerSchedulesRealAlarmAndOngoingNotification $R | tail -3
 
 echo "== Receptores de batería, carga y WiFi (dumpsys battery / svc wifi)"
-$A shell dumpsys battery set level 70
+$A shell dumpsys battery set ac 0; $A shell dumpsys battery set usb 0; $A shell dumpsys battery set level 70
 $A shell am instrument -w -e ext true -e class dev.flow.app.DeviceListenersTest $R > /tmp/flow-ext.out 2>&1 &
 sleep 20
 $A shell dumpsys battery set level 40; sleep 3
@@ -31,12 +31,12 @@ sleep 25; $A emu geo fix -4.7 37.9 >/dev/null; $A emu geo fix -4.5 37.5 >/dev/nu
 sleep 45; $A emu geo fix -4.5001 37.5001 >/dev/null
 wait; tail -3 /tmp/flow-geo.out
 
-echo "== Reinicio real: preparar flujos activos, anotar estado, reiniciar y comparar (adb reboot: solo con el emulador en exclusiva)"
 if [ "${REINICIO:-0}" = "1" ]; then
+  echo "== Reinicio real: preparar flujos activos, anotar estado, reiniciar y comparar (solo con el emulador en exclusiva)"
   $A shell pm grant dev.flow.app android.permission.ACCESS_BACKGROUND_LOCATION
   $A shell am instrument -w -e prep true -e class dev.flow.app.DeviceRebootPrepTest#prepare $R | tail -2
   $A shell am start -n dev.flow.app/.MainActivity >/dev/null; sleep 3   # la app no debe quedar en estado «detenida»
-  est() { echo "alarmas: $($A shell dumpsys alarm | grep -c 'dev.flow.app')"; $A shell dumpsys activity services dev.flow.app | grep -c ListenerService | sed 's/^/servicio: /'; echo "ubicacion: $($A shell dumpsys location | grep -c 'dev.flow.app')"; }
+  est() { echo "-- alarmas de Flow:"; $A shell dumpsys alarm | grep -E "RTC.*dev.flow.app|dev.flow.app.*(RTC|flow://alarm)|tag=.*dev.flow" | cut -c1-200; echo "-- servicio:"; $A shell dumpsys activity services dev.flow.app | grep -E "ServiceRecord.*ListenerService|isForeground" | cut -c1-160; echo "-- ubicación:"; $A shell dumpsys location | grep -E "dev.flow.app/.*Request|dev.flow.app: min" | cut -c1-200; }
   echo "antes:"; est
   $A reboot; $A wait-for-device; until [ "$($A shell getprop sys.boot_completed | tr -d '\r')" = "1" ]; do sleep 3; done; sleep 20
   echo "despues (sin abrir la app):"; est

@@ -20,4 +20,5 @@ Las pruebas instrumentadas (`:app:connectedDebugAndroidTest`, emulador API 36) c
 
 - [docs/ESTADO.md](docs/ESTADO.md) — qué está hecho, qué se verificó y qué no.
 - [docs/REQUISITOS.md](docs/REQUISITOS.md) — encargo original contrastado con el código.
+- [docs/SEGURIDAD.md](docs/SEGURIDAD.md) — permisos, receptores exportados y revisión de seguridad.
 - [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) — cómo añadir un nodo, mecanismos de ejecución, límites de Android.

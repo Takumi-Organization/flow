@@ -16,15 +16,24 @@
 - `syncBackground` se serializa con un `Mutex` (dos sincronizaciones concurrentes podían dejar una escucha con el estado antiguo).
 - El texto de Ajustes aún decía que ubicación y calendario estaban «pendientes»: eliminado.
 
+## Verificado en la segunda ronda (2026-11-14)
+- **Importar por el selector del sistema**: Ajustes → Exportar → Guardar escribe `flow-export.json` (5,9 kB); Importar → elegirlo muestra «Importados 1 flujos (desactivados)» y aparecen dos flujos en Inicio.
+- **Reinicio real del emulador** (`adb reboot`, emulador en exclusiva, app sin abrir tras el reinicio): la alarma `reb-time` (03:33) reaparece en `dumpsys alarm` con el mismo `origWhen`; `ListenerService` vuelve a estar en primer plano; `dumpsys location` muestra los registros `fused` y `gps` creados tras el arranque. Esto prueba además el `BootReceiver` con `android:exported="false"`.
+- **«Según el sistema»**: con `cmd uimode night no` la app se ve clara (Washi) y con `night yes` oscura (Grafito). Restaurado a `no`.
+- **Bluetooth y auriculares** (en lo simulable): `BluetoothReceiver` ejecuta el flujo al recibir `ACL_CONNECTED` dentro del proceso y descarta una acción ajena; el evento `headset` recorre WorkManager, el motor y el flujo.
+- **Calendario de pruebas**: se borra desde un test instrumentado (`testCalendarCanBeDeleted`) y al terminar la prueba de calendario; el emulador ya no tiene calendarios locales.
+- `scripts/verificar-emulador.sh` (con `REINICIO=1` incluye el reinicio) deja temporizador, batería/carga/WiFi y ubicación en verde.
+
 ## No verificado
-- **Bluetooth** (`ACL_CONNECTED/DISCONNECTED`) y **auriculares con cable**: solo los matchers están probados en JVM. Hace falta hardware (un dispositivo Bluetooth o un jack real); el emulador no los simula y `BOOT_COMPLETED`/ACL son difusiones protegidas que ni el shell puede enviar.
-- Reinicio completo del emulador (`adb reboot`): no se hizo para no tumbar a otros agentes que comparten el emulador; se comprobó que el manifiesto registra `BootReceiver` para `BOOT_COMPLETED` y que su cuerpo reprograma las alarmas.
-- Importación por el selector de ficheros del sistema (la parte de interfaz): el emulador compartido cambió de app durante la prueba; la lógica de importación está verificada por prueba instrumentada y JVM.
-- Otras versiones de Android (solo API 36) y dispositivo físico; sonido audible; modo «Según el sistema» con `cmd uimode`.
-- Ubicación «Permitir siempre» concedida por `pm grant` en la prueba; el flujo de concesión por el usuario en un móvil real no se ha recorrido.
+- **Hardware real**: el aviso `ACL_CONNECTED` del proceso Bluetooth del sistema y el `AudioDeviceCallback` con un auricular de cable o USB reales. El emulador no los simula y esas difusiones están protegidas (ni el shell puede enviarlas).
+- **Otro nivel de API**: solo hay instalada la imagen `android-36 google_apis_playstore`; no se descargó ninguna otra. `minSdk` y comportamiento en Android 10–15 sin probar.
+- Móvil físico: no se ha usado (regla del encargo).
+- El flujo de conceder «Permitir siempre» a mano en un móvil real (en el emulador se concede con `pm grant`).
+- Sonido audible.
 
 ## Notas de diseño
 - Ubicación: `LocationManager.requestLocationUpdates` con `PendingIntent` (60 s / 50 m), receptor del manifiesto, sin Play Services. La primera lectura solo memoriza el estado dentro/fuera. Sin «Permitir siempre» el sistema solo entrega con la app abierta (se avisa en Ajustes y en el panel del nodo).
 - Calendario: se calcula el próximo evento (próximos 7 días, ignora «todo el día») con `CalendarSchedule` y se programa una alarma; se relee cada hora (WorkManager periódico), al abrir la app, tras cada disparo y tras reinicio. Los cambios del calendario se notan, como mucho, a la hora siguiente.
+- Seguridad: ver [SEGURIDAD.md](SEGURIDAD.md).
 - Variables: Room no conserva el orden de declaración (se devuelven ordenadas por nombre); no afecta a la ejecución.
 - La emulación compartida de varios agentes hizo que las capturas manuales fuesen frágiles; por eso los gestos se comprueban con pruebas instrumentadas siempre que es posible.
