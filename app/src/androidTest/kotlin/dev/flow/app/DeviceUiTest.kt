@@ -71,12 +71,8 @@ class DeviceUiTest {
         runBlocking { g.repo.flows.first().forEach { g.repo.delete(it.id) }; g.repo.save(f) }
         g.prefs.onboarded = true
         try {
-            ActivityScenario.launch(MainActivity::class.java).use {
-                Thread.sleep(2500)
-                // única tarjeta de la pantalla de inicio (la posición es la medida en el emulador de 1080x2424)
-                val dm = ctx.resources.displayMetrics
-                ua.executeShellCommand("input tap ${(dm.widthPixels * 0.45).toInt()} ${(dm.heightPixels * 0.465).toInt()}").close()
-                Thread.sleep(2500)
+            ActivityScenario.launch<MainActivity>(android.content.Intent(ctx, MainActivity::class.java).putExtra("flowId", f.id)).use {
+                Thread.sleep(3500) // abre directamente el editor del flujo (enlace por extra «flowId»)
                 val a = shot("pinch_0_inicial")
                 val w = a.width.toFloat(); val h = a.height.toFloat()
                 pinch(w / 2, h * 0.42f, w * 0.06f, w * 0.30f); Thread.sleep(800)

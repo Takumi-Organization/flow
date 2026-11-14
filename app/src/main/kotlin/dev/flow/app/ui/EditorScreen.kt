@@ -13,11 +13,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.flow.app.FlowApp
 import dev.flow.app.Graph
 import dev.flow.app.LiveEvent
@@ -122,11 +124,15 @@ fun EditorScreen(graph: Graph, flowId: String, onBack: () -> Unit, onOpenRun: (S
     val states = remember { mutableStateMapOf<String, NodeState>() }
     var lastRun by remember { mutableStateOf<RunRecord?>(null) }
     var running by remember { mutableStateOf(false) }
+    // La ejecución real dura milisegundos: se reproduce a «velocidad de señal» para que el recorrido se pueda ver
+    val signal = remember { kotlinx.coroutines.channels.Channel<LiveEvent.Node>(kotlinx.coroutines.channels.Channel.UNLIMITED) }
+    val rmotion = reduceMotion()
+    LaunchedEffect(flowId) { for (e in signal) { states[e.nodeId] = e.state; if (!rmotion) kotlinx.coroutines.delay(if (e.state == NodeState.RUNNING) 380L else 70L) } }
     LaunchedEffect(flowId) {
         graph.live.collect { e ->
             when (e) {
                 is LiveEvent.Started -> if (e.flowId == flowId) { states.clear(); running = true; lastRun = null }
-                is LiveEvent.Node -> if (e.flowId == flowId) states[e.nodeId] = e.state
+                is LiveEvent.Node -> if (e.flowId == flowId) signal.trySend(e)
                 is LiveEvent.Finished -> if (e.record.flowId == flowId) { running = false; lastRun = e.record }
             }
         }
@@ -146,21 +152,20 @@ fun EditorScreen(graph: Graph, flowId: String, onBack: () -> Unit, onOpenRun: (S
     Column(Modifier.fillMaxSize().background(k.paper).statusBarsPadding()) {
         // barra superior
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("←", style = T.h1, color = k.ink) }
+            Box(Modifier.size(48.dp).clip(androidx.compose.foundation.shape.CircleShape).background(k.high).clickable(onClick = onBack), contentAlignment = Alignment.Center) { PIcon("back", k.ink, 22.dp) }
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f).clickable { rename = true }) {
-                Text(st.flow.name, style = T.h2, color = k.ink, maxLines = 1)
+                Text(st.flow.name, style = T.h1.copy(fontSize = 22.sp), color = k.ink, maxLines = 1)
                 Text(if (errors > 0) "✕ $errors errores" else if (warns > 0) "▲ $warns avisos" else "✓ flujo válido", style = T.small,
                     color = if (errors > 0) k.error else if (warns > 0) k.warn else k.ok, modifier = Modifier.clickable { showIssues = true })
             }
-            Text("Activo", style = T.small, color = k.muted)
-            Spacer(Modifier.width(6.dp))
-            Switch(st.flow.enabled, { on ->
+            PatchToggle(st.flow.enabled, tone = flowTone(flowId, k), onChange = { on ->
                 if (on && !canEnable()) { st.message = "Corrige los errores antes de activar"; showIssues = true }
                 else { st.setEnabledLocal(on); scope.launch { graph.repo.setEnabled(flowId, on); graph.syncBackground(ctx)?.let { st.message = it } } }
             })
             Box {
-                TextButton(onClick = { menu = true }) { Text("⋮", style = T.h1, color = k.ink) }
-                DropdownMenu(menu, { menu = false }, containerColor = k.raised) {
+                Box(Modifier.size(48.dp).clickable { menu = true }, contentAlignment = Alignment.Center) { PIcon("more", k.ink, 24.dp) }
+                DropdownMenu(menu, { menu = false }, containerColor = k.raised, shape = Sq20) {
                     DropdownMenuItem({ Text("Deshacer", style = T.body) }, { menu = false; st.undo() }, enabled = st.canUndo)
                     DropdownMenuItem({ Text("Encajar en pantalla", style = T.body) }, { menu = false; vp.fit(st.flow, dens) })
                     DropdownMenuItem({ Text("Variables…", style = T.body) }, { menu = false; showVars = true })
@@ -169,11 +174,11 @@ fun EditorScreen(graph: Graph, flowId: String, onBack: () -> Unit, onOpenRun: (S
             }
         }
         // barra de ejecución / depuración
-        Row(Modifier.fillMaxWidth().background(k.raised).padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (!running) FButton("▶ Probar", { if (errors > 0) { showIssues = true } else {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (!running) FButton("Probar", { if (errors > 0) { showIssues = true } else {
                 val t = one?.takeIf { graph.registry[it.type]?.kind == NodeKind.TRIGGER }?.id
                 graph.runManual(flowId, t) } }, primary = true, enabled = errors == 0)
-            else FButton("■ Cancelar", { graph.cancel(flowId) }, danger = true)
+            else FButton("Cancelar", { graph.cancel(flowId) }, danger = true)
             val r = lastRun
             Text(when { running -> "Ejecutando…"; r != null -> "${statusText(r.status.name)} · ${fmtMs(r.durationMs)}"; else -> "Las acciones se ejecutan de verdad" },
                 style = T.small, color = if (r?.status == RunStatus.ERROR) k.error else k.muted, modifier = Modifier.weight(1f).clickable(enabled = r != null) { r?.let { onOpenRun(it.runId) } })
@@ -186,16 +191,16 @@ fun EditorScreen(graph: Graph, flowId: String, onBack: () -> Unit, onOpenRun: (S
                 onConnect = { a, p, b -> st.connect(a, p, b) },
                 onDropEmpty = { a, p, pos -> showPalette = (a to p) to pos },
             ))
-            if (st.flow.nodes.isEmpty()) Text("Toca + para añadir tu primer nodo", style = T.body, color = k.muted, modifier = Modifier.align(Alignment.Center))
+            if (st.flow.nodes.isEmpty()) Text("Toca + para añadir tu primer módulo", style = T.body, color = k.muted, modifier = Modifier.align(Alignment.Center))
             // zoom
             Column(Modifier.align(Alignment.BottomStart).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 MiniBtn("+") { vp.scale = (vp.scale * 1.25f).coerceAtMost(2.5f) }
                 MiniBtn("−") { vp.scale = (vp.scale / 1.25f).coerceAtLeast(0.3f) }
             }
-            Box(Modifier.align(Alignment.BottomEnd).padding(14.dp).size(56.dp).clip(R4).background(k.accent).clickable {
+            Box(Modifier.align(Alignment.BottomEnd).padding(16.dp).size(60.dp).shadow(16.dp, androidx.compose.foundation.shape.CircleShape, ambientColor = k.accent.copy(alpha = .4f), spotColor = k.accent.copy(alpha = .6f)).clip(androidx.compose.foundation.shape.CircleShape).background(k.accent).clickable {
                 val from = one?.takeIf { graph.registry[it.type]?.kind != null }?.let { it.id to (st.firstFreePort(it.id) ?: PORT_OUT) }
                 showPalette = from to null }, contentAlignment = Alignment.Center) {
-                Text("+", style = T.display, color = androidx.compose.ui.graphics.Color(0xFF211D1A).takeIf { k.accent.red * .2126f + k.accent.green * .7152f + k.accent.blue * .0722f > .5f } ?: androidx.compose.ui.graphics.Color(0xFFF7F2EA))
+                PIcon("plus", k.onAccent, 28.dp)
             }
             SnackbarHost(snack, Modifier.align(Alignment.TopCenter))
         }
@@ -204,12 +209,12 @@ fun EditorScreen(graph: Graph, flowId: String, onBack: () -> Unit, onOpenRun: (S
         when {
             edge != null -> EdgePanel(st, edge, graph.registry)
             one != null -> NodePanel(st, one, graph, vp.centerInGraph(dens))
-            st.selected.size > 1 -> Row(Modifier.fillMaxWidth().background(k.raised).navigationBarsPadding().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            st.selected.size > 1 -> Row(Modifier.fillMaxWidth().shadow(20.dp, Sq28).clip(Sq28).background(k.raised).navigationBarsPadding().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("${st.selected.size} nodos", style = T.body, color = k.ink, modifier = Modifier.weight(1f))
                 FButton("Duplicar", { st.duplicateSelection() }); FButton("Eliminar", { st.deleteSelection() }, danger = true); FButton("Limpiar", { st.selected = emptySet() })
             }
             else -> Text("Toca un nodo para editarlo · arrastra desde su punto de salida para conectar · mantén pulsado para selección múltiple",
-                style = T.small, color = k.muted, modifier = Modifier.fillMaxWidth().background(k.raised).navigationBarsPadding().padding(12.dp))
+                style = T.small, color = k.muted, modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp))
         }
     }
 
@@ -227,7 +232,7 @@ fun EditorScreen(graph: Graph, flowId: String, onBack: () -> Unit, onOpenRun: (S
             title = { Text("Nombre del flujo", style = T.h2) }, text = { FField(t, { t = it }, "Nombre") }, containerColor = k.raised) }
 }
 
-@Composable private fun MiniBtn(t: String, onClick: () -> Unit) = Box(Modifier.size(40.dp).clip(R4).background(k.raised).border(1.dp, k.line, R4).clickable(onClick = onClick), contentAlignment = Alignment.Center) { Text(t, style = T.h1, color = k.ink) }
+@Composable private fun MiniBtn(t: String, onClick: () -> Unit) = Box(Modifier.size(44.dp).shadow(8.dp, androidx.compose.foundation.shape.CircleShape).clip(androidx.compose.foundation.shape.CircleShape).background(k.raised).border(.8.dp, k.line, androidx.compose.foundation.shape.CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) { Text(t, style = T.h1, color = k.ink) }
 
 @Composable
 private fun EdgePanel(st: EditorState, e: EdgeDef, reg: NodeRegistry) {
@@ -251,7 +256,8 @@ private fun NodePanel(st: EditorState, n: NodeDef, graph: Graph, center: Offset)
     var tick by remember { mutableIntStateOf(0) }
     val request = rememberCapRequester { tick++ }
     val flows by graph.repo.flows.collectAsState(emptyList())
-    Column(Modifier.fillMaxWidth().heightIn(max = 380.dp).background(k.raised).navigationBarsPadding().verticalScroll(rememberScrollState()).padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.fillMaxWidth().heightIn(max = 400.dp).shadow(20.dp, Sq28).clip(Sq28).background(k.raised).navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.align(Alignment.CenterHorizontally).size(38.dp, 4.dp).background(k.line.copy(alpha = .3f), androidx.compose.foundation.shape.RoundedCornerShape(50)))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Label(when (spec?.kind) { NodeKind.TRIGGER -> "Disparador"; NodeKind.CONDITION -> "Condición"; NodeKind.ACTION -> "Acción"; null -> "Desconocido" })

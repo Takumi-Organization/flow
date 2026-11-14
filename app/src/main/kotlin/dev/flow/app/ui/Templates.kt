@@ -5,7 +5,7 @@ import dev.flow.engine.*
 data class Template(val id: String, val category: String, val title: String, val summary: String, val flow: FlowDef)
 
 private fun n(id: String, type: String, x: Float, y: Float, vararg p: Pair<String, String>, onError: String = "stop", label: String = "") =
-    NodeDef(id, type, x, y, mapOf(*p), label, onError = onError)
+    NodeDef(id, type, x * 1.32f, y, mapOf(*p), label, onError = onError)
 private fun e(a: String, b: String, port: String = PORT_OUT, order: Int = 0) = EdgeDef("$a-$port-$b", a, port, b, order)
 
 /** Ejemplos reales: todos usan nodos que se ejecutan, sin simulaciones. Son plantillas editables. */

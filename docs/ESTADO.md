@@ -37,3 +37,13 @@
 - Seguridad: ver [SEGURIDAD.md](SEGURIDAD.md).
 - Variables: Room no conserva el orden de declaración (se devuelven ordenadas por nombre); no afecta a la ejecución.
 - La emulación compartida de varios agentes hizo que las capturas manuales fuesen frágiles; por eso los gestos se comprueban con pruebas instrumentadas siempre que es posible.
+
+## Rediseño visual (2026-11-14)
+
+- **Sistema**: papel lavanda y Grafito/AMOLED, neutros con matiz (nunca grises puros), tríada de datos a luminosidad pareja —disparador coral, condición violeta, acción menta— y acento de interfaz elegible (coral, rosa, violeta, ámbar, menta). Cada flujo recibe un tono propio estable.
+- **Tipografía**: Inter (instancias de texto y display, cifras tabulares) con jerarquía nueva (mega/hero/num); se retira Komiki Mono. Licencia y recorte en [fuentes/LEEME.md](fuentes/LEEME.md).
+- **Forma y movimiento**: esquinas continuas por superelipse, paneles con borde de luz, botones con presión elástica y hápticos por tipo de acción; transiciones de empuje entre pantallas, gesto de atrás desde el borde izquierdo con goma elástica y barra inferior flotante que se desvanece bajo el contenido. Todo el movimiento se anula con la escala de animaciones del sistema a 0.
+- **Pantallas**: Inicio (héroe con cifras y flujos), Biblioteca de plantillas, Actividad, Ajustes, editor (lienzo, panel de nodo y presets) y tutorial con demostración animada del parche.
+- **Navegación externa**: `launchMode="singleTop"` y extra `flowId`; una notificación abre el editor aunque la app ya esté abierta, sin apilar otra actividad.
+- **Capturas**: 40 en [capturas/](capturas/) (grafito, washi y amoled × inicio 1–3, biblioteca, actividad, ejecución, ajustes 1–3, editor y editor con prueba) más las `antes-*` del diseño anterior. Se regeneran con `scripts/capturas.sh <serial> <prefijo> <tema>` tras sembrar datos con `DeviceSeedTest`.
+- **Comprobado**: `:engine:test` (48), `:app:lintDebug` y `:app:assembleDebug` en verde; capturas revisadas y sin pantallas negras. `scripts/jank.sh` queda para medir en un dispositivo con el APK de release (el de depuración no es representativo).

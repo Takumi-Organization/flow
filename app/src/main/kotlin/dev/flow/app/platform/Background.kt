@@ -193,15 +193,27 @@ class ListenerService : Service() {
     /** WiFi: un NetworkCallback en proceso (los de PendingIntent los libera el sistema a los pocos segundos; medido en emulador API 36). */
     private var wifiNet: android.net.Network? = null
     private var wifiSsid: String? = null
-    private val wifi = object : ConnectivityManager.NetworkCallback(FLAG_INCLUDE_LOCATION_INFO) {
-        override fun onCapabilitiesChanged(n: android.net.Network, c: NetworkCapabilities) {
-            @Suppress("DEPRECATION") val raw = (c.transportInfo as? android.net.wifi.WifiInfo)?.ssid?.trim('"')
-            val ssid = if (raw == null || raw == "<unknown ssid>") "" else raw
-            if (wifiNet != n || wifiSsid != ssid) { wifiNet = n; wifiSsid = ssid; fire(TriggerEvent("wifi", mapOf("state" to "connected", "ssid" to ssid))) }
+    /** El SSID no está disponible por `transportInfo` antes de API 29; allí el disparador llega sin nombre de red. */
+    @Suppress("DEPRECATION")
+    private fun ssidOf(c: NetworkCapabilities): String? =
+        if (Build.VERSION.SDK_INT >= 29) (c.transportInfo as? android.net.wifi.WifiInfo)?.ssid?.trim('"') else null
+    private fun wifiChanged(n: android.net.Network, c: NetworkCapabilities) {
+        val raw = ssidOf(c)
+        val ssid = if (raw == null || raw == "<unknown ssid>") "" else raw
+        if (wifiNet != n || wifiSsid != ssid) { wifiNet = n; wifiSsid = ssid; fire(TriggerEvent("wifi", mapOf("state" to "connected", "ssid" to ssid))) }
+    }
+    private fun wifiLost(n: android.net.Network) {
+        if (wifiNet == n) { wifiNet = null; wifiSsid = null; fire(TriggerEvent("wifi", mapOf("state" to "disconnected", "ssid" to ""))) }
+    }
+    // En API 31+ el flag es necesario para recibir `transportInfo`; el constructor con flags no existe en 26–30.
+    private val wifi: ConnectivityManager.NetworkCallback = if (Build.VERSION.SDK_INT >= 31)
+        object : ConnectivityManager.NetworkCallback(ConnectivityManager.NetworkCallback.FLAG_INCLUDE_LOCATION_INFO) {
+            override fun onCapabilitiesChanged(n: android.net.Network, c: NetworkCapabilities) = wifiChanged(n, c)
+            override fun onLost(n: android.net.Network) = wifiLost(n)
         }
-        override fun onLost(n: android.net.Network) {
-            if (wifiNet == n) { wifiNet = null; wifiSsid = null; fire(TriggerEvent("wifi", mapOf("state" to "disconnected", "ssid" to ""))) }
-        }
+    else object : ConnectivityManager.NetworkCallback() {
+        override fun onCapabilitiesChanged(n: android.net.Network, c: NetworkCapabilities) = wifiChanged(n, c)
+        override fun onLost(n: android.net.Network) = wifiLost(n)
     }
     private fun graph() = (applicationContext as FlowApp).graph
     private fun fire(e: TriggerEvent) { scope.launch { graph().engine.dispatch(e) } }

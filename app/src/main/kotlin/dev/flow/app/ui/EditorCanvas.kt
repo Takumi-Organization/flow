@@ -1,5 +1,6 @@
 package dev.flow.app.ui
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,6 +59,10 @@ private sealed interface Hit {
     data class Edge(val id: String) : Hit
 }
 
+private fun bezPoint(a: Offset, c1: Offset, c2: Offset, d: Offset, t: Float): Offset {
+    val m = 1 - t
+    return Offset(m * m * m * a.x + 3 * m * m * t * c1.x + 3 * m * t * t * c2.x + t * t * t * d.x, m * m * m * a.y + 3 * m * m * t * c1.y + 3 * m * t * t * c2.y + t * t * t * d.y)
+}
 private fun bez(a: Offset, b: Offset, t: Float): Offset {
     val dx = max(60f, abs(b.x - a.x) / 2f); val c1 = Offset(a.x + dx, a.y); val c2 = Offset(b.x - dx, b.y); val m = 1 - t
     return Offset(m * m * m * a.x + 3 * m * m * t * c1.x + 3 * m * t * t * c2.x + t * t * t * b.x, m * m * m * a.y + 3 * m * m * t * c1.y + 3 * m * t * t * c2.y + t * t * t * b.y)
@@ -75,6 +80,8 @@ fun FlowCanvas(
 ) {
     val kc = k
     val dens = LocalDensity.current.density
+    val anyRunning = states.values.any { it == NodeState.RUNNING }
+    val pulse = if (anyRunning && !reduceMotion()) rememberInfiniteTransition(label = "pulse").animateFloat(0f, 1f, infiniteRepeatable(tween(650, easing = LinearEasing)), label = "pl").value else 0f
     val measurer = rememberTextMeasurer()
     val unit = Density(1f, 1f)
     val vc = LocalViewConfiguration.current
@@ -174,27 +181,32 @@ fun FlowCanvas(
     ) {
         val u = dens * vp.scale
         // retícula de puntos
-        val step = 28f * u
+        val step = 32f * u
         if (step > 10f) {
             val ox = vp.offset.x.mod(step); val oy = vp.offset.y.mod(step)
-            var x = ox; while (x < size.width) { var y = oy; while (y < size.height) { drawCircle(kc.line.copy(alpha = .18f), 1.4f * dens, Offset(x, y)); y += step }; x += step }
+            var x = ox; while (x < size.width) { var y = oy; while (y < size.height) { drawCircle(kc.ink.copy(alpha = .10f), 1.3f * dens, Offset(x, y)); y += step }; x += step }
         }
         translate(vp.offset.x, vp.offset.y) { scale(u, u, Offset.Zero) {
             val f = flow
-            // conexiones
+            // conexiones: cables con holgura; se iluminan con el color del tipo de origen cuando la señal pasa por ellos
             for (e in f.edges) {
                 val a = f.node(e.from) ?: continue; val b = f.node(e.to) ?: continue
                 val spec = registry[a.type]
                 val pa = outPort(a, e.port, spec); val pb = inPort(b)
-                val col = when { e.id == selectedEdge -> kc.ink; e.port == PORT_TRUE -> kc.ok; e.port == PORT_FALSE -> kc.error; else -> kc.dim }
-                val path = Path().apply { moveTo(pa.x, pa.y); val dx = max(60f, abs(pb.x - pa.x) / 2f); cubicTo(pa.x + dx, pa.y, pb.x - dx, pb.y, pb.x, pb.y) }
-                drawPath(path, col, style = Stroke(if (e.id == selectedEdge) 3.5f else 2f))
-                val ar = Path().apply { moveTo(pb.x, pb.y); lineTo(pb.x - 9f, pb.y - 5f); lineTo(pb.x - 9f, pb.y + 5f); close() }
-                drawPath(ar, col)
+                val sa = states[a.id]; val sb = states[b.id]
+                val lit = sa == NodeState.COMPLETED && (sb == NodeState.COMPLETED || sb == NodeState.RUNNING || sb == NodeState.ERROR)
+                val flowing = sb == NodeState.RUNNING || (sa == NodeState.RUNNING)
+                val base = when { e.port == PORT_TRUE -> kc.ok; e.port == PORT_FALSE -> kc.error; else -> kindColor(spec?.kind ?: NodeKind.ACTION, kc) }
+                val col = when { e.id == selectedEdge -> kc.signal; lit || flowing -> base; else -> kc.ink.copy(alpha = if (kc.dark) .30f else .34f) }
+                val dx = max(60f, abs(pb.x - pa.x) / 2f)
+                val path = Path().apply { moveTo(pa.x, pa.y); cubicTo(pa.x + dx, pa.y + 6f, pb.x - dx, pb.y + 6f, pb.x, pb.y) }
+                if (lit || flowing || e.id == selectedEdge) drawPath(path, col.copy(alpha = .20f), style = Stroke(10f, cap = StrokeCap.Round))
+                drawPath(path, col, style = Stroke(if (e.id == selectedEdge) 4.5f else 3.2f, cap = StrokeCap.Round))
+                if (flowing) { for (j in 0..2) { val t = (pulse + j / 3f) % 1f; val c = bezPoint(pa, Offset(pa.x + dx, pa.y + 6f), Offset(pb.x - dx, pb.y + 6f), pb, t); drawCircle(col.copy(alpha = .35f), 9f, c); drawCircle(Color.White, 3.6f, c) } }
                 val sib = f.outgoing(e.from).size
                 if (sib > 1) {
-                    val idx = f.outgoing(e.from).indexOfFirst { it.id == e.id } + 1; val m = bez(pa, pb, .22f)
-                    drawCircle(kc.paper, 8f, m); drawCircle(col, 8f, m, style = Stroke(1.2f))
+                    val idx = f.outgoing(e.from).indexOfFirst { it.id == e.id } + 1; val m = bezPoint(pa, Offset(pa.x + dx, pa.y + 6f), Offset(pb.x - dx, pb.y + 6f), pb, .22f)
+                    drawCircle(kc.raised, 10f, m); drawCircle(col, 10f, m, style = Stroke(1.6f))
                     val tl = measurer.measure("$idx", TextStyle(fontFamily = Mono, fontSize = 10.sp, color = col, fontWeight = FontWeight.Bold), density = unit)
                     drawText(tl, topLeft = Offset(m.x - tl.size.width / 2f, m.y - tl.size.height / 2f))
                 }
@@ -217,60 +229,58 @@ private fun DrawScope.drawNode(n: NodeDef, spec: NodeSpec?, sel: Boolean, st: No
     val kind = spec?.kind
     val col = if (spec == null) kc.error else kindColor(kind!!, kc)
     val rect = Rect(n.x, n.y, n.x + NODE_W, n.y + NODE_H)
-    val path = Path().apply {
-        when (kind) {
-            NodeKind.TRIGGER -> addRoundRect(RoundRect(rect, CornerRadius(34f), CornerRadius(6f), CornerRadius(6f), CornerRadius(34f)))
-            NodeKind.CONDITION -> { val c = 16f; moveTo(n.x + c, n.y); lineTo(n.x + NODE_W - c, n.y); lineTo(n.x + NODE_W, n.y + NODE_H / 2); lineTo(n.x + NODE_W - c, n.y + NODE_H); lineTo(n.x + c, n.y + NODE_H); lineTo(n.x, n.y + NODE_H / 2); close() }
-            else -> addRoundRect(RoundRect(rect, CornerRadius(7f)))
-        }
-    }
-    drawPath(path, kc.raised)
-    val (stroke, w) = when {
-        st == NodeState.RUNNING -> kc.accent to 4f
-        st == NodeState.ERROR -> kc.error to 3.5f
-        st == NodeState.COMPLETED -> kc.ok to 3f
-        hover -> kc.ink to 3f
-        else -> col to 2f
-    }
-    drawPath(path, stroke, style = Stroke(w, pathEffect = if (st == NodeState.SKIPPED) PathEffect.dashPathEffect(floatArrayOf(6f, 5f)) else null))
-    if (sel) drawRect(kc.ink, Offset(n.x - 5f, n.y - 5f), Size(NODE_W + 10f, NODE_H + 10f), style = Stroke(1.6f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f))))
+    val rr = CornerRadius(16f)
     val dim = st == NodeState.SKIPPED
-    val glyph = when (kind) { NodeKind.TRIGGER -> "▶"; NodeKind.CONDITION -> "?"; NodeKind.ACTION -> "■"; null -> "!" }
-    val padL = if (kind == NodeKind.TRIGGER) 30f else if (kind == NodeKind.CONDITION) 26f else 12f
-    val g = tm.measure(glyph, TextStyle(fontFamily = Mono, fontSize = 11.sp, color = col, fontWeight = FontWeight.Bold), density = unit)
-    drawText(g, topLeft = Offset(n.x + padL, n.y + 11f))
+    // halo según estado
+    val ring = when { st == NodeState.RUNNING -> kc.accent; st == NodeState.ERROR -> kc.error; st == NodeState.COMPLETED -> kc.ok; else -> null }
+    if (ring != null) drawRoundRect(ring.copy(alpha = .22f), Offset(rect.left - 6f, rect.top - 6f), Size(NODE_W + 12f, NODE_H + 12f), CornerRadius(22f))
+    if (sel) drawRoundRect(kc.signal.copy(alpha = .25f), Offset(rect.left - 7f, rect.top - 7f), Size(NODE_W + 14f, NODE_H + 14f), CornerRadius(23f))
+    drawRoundRect(if (kc.dark) kc.raised else Color.White, rect.topLeft, rect.size, rr)
+    drawRoundRect(kc.high.copy(alpha = if (kc.dark) .35f else .0f), rect.topLeft, Size(NODE_W, NODE_H / 2f), rr)
+    val stroke = when { ring != null -> ring; sel -> kc.signal; hover -> kc.ink; else -> kc.ink.copy(alpha = if (kc.dark) .16f else .14f) }
+    drawRoundRect(stroke, rect.topLeft, rect.size, rr, style = Stroke(if (ring != null || sel) 2.6f else 1.2f, pathEffect = if (dim) PathEffect.dashPathEffect(floatArrayOf(7f, 6f)) else null))
+    // chip del tipo
+    val chip = Offset(n.x + 22f, n.y + 22f)
+    drawCircle(col.copy(alpha = if (dim) .10f else .22f), 13f, chip)
+    val cc = if (dim) kc.faint else col
+    when (kind) {
+        NodeKind.TRIGGER -> { val p = Path().apply { moveTo(chip.x + 1.5f, chip.y - 7f); lineTo(chip.x - 5f, chip.y + 1.5f); lineTo(chip.x - .5f, chip.y + 1.5f); lineTo(chip.x - 1.5f, chip.y + 7f); lineTo(chip.x + 5f, chip.y - 1.5f); lineTo(chip.x + .5f, chip.y - 1.5f); close() }; drawPath(p, cc) }
+        NodeKind.CONDITION -> { val p = Path().apply { moveTo(chip.x, chip.y - 7f); lineTo(chip.x + 7f, chip.y); lineTo(chip.x, chip.y + 7f); lineTo(chip.x - 7f, chip.y); close() }; drawPath(p, cc, style = Stroke(2f, join = StrokeJoin.Round)) }
+        NodeKind.ACTION -> drawRoundRect(cc, Offset(chip.x - 6f, chip.y - 6f), Size(12f, 12f), CornerRadius(3f), style = Stroke(2f))
+        null -> { val g = tm.measure("!", TextStyle(fontFamily = Mono, fontSize = 12.sp, color = kc.error, fontWeight = FontWeight.Bold), density = unit); drawText(g, topLeft = Offset(chip.x - g.size.width / 2f, chip.y - g.size.height / 2f)) }
+    }
     val title = n.label.ifBlank { spec?.title ?: n.type }
-    val tw = NODE_W - padL - 40f
-    val t = tm.measure(title, TextStyle(fontFamily = Mono, fontSize = 13.sp, color = if (dim) kc.faint else kc.ink, fontWeight = FontWeight.Bold), overflow = TextOverflow.Ellipsis, maxLines = 1,
-        constraints = androidx.compose.ui.unit.Constraints(maxWidth = (tw - 16f).toInt().coerceAtLeast(10)), density = unit)
-    drawText(t, topLeft = Offset(n.x + padL + 16f, n.y + 9f))
+    val tw = NODE_W - 48f - 26f
+    val t = tm.measure(title, TextStyle(fontFamily = Mono, fontSize = 13.sp, color = if (dim) kc.faint else kc.ink, fontWeight = FontWeight.SemiBold), overflow = TextOverflow.Ellipsis, maxLines = 1,
+        constraints = androidx.compose.ui.unit.Constraints(maxWidth = tw.toInt().coerceAtLeast(10)), density = unit)
+    drawText(t, topLeft = Offset(n.x + 44f, n.y + 22f - t.size.height / 2f))
     val sum = if (spec != null) summarize(spec, n) else "tipo desconocido: ${n.type}"
     val s = tm.measure(sum, TextStyle(fontFamily = Mono, fontSize = 10.5.sp, color = if (dim) kc.faint else kc.muted), overflow = TextOverflow.Ellipsis, maxLines = 2,
-        constraints = androidx.compose.ui.unit.Constraints(maxWidth = (tw - 4f).toInt().coerceAtLeast(10)), density = unit)
-    drawText(s, topLeft = Offset(n.x + padL, n.y + 30f))
+        constraints = androidx.compose.ui.unit.Constraints(maxWidth = (NODE_W - 28f).toInt().coerceAtLeast(10)), density = unit)
+    drawText(s, topLeft = Offset(n.x + 14f, n.y + 40f))
     // insignia de estado / validación
     val (mk, mc) = when {
         st == NodeState.COMPLETED -> "✓" to kc.ok; st == NodeState.ERROR -> "✕" to kc.error; st == NodeState.RUNNING -> "…" to kc.accent; st == NodeState.SKIPPED -> "–" to kc.faint
-        issue == Severity.ERROR -> "✕" to kc.error; issue == Severity.WARNING -> "▲" to kc.warn; else -> null to kc.ink
+        issue == Severity.ERROR -> "✕" to kc.error; issue == Severity.WARNING -> "!" to kc.warn; else -> null to kc.ink
     }
     if (mk != null) {
-        val c = Offset(n.x + NODE_W - 13f, n.y + 13f)
-        drawCircle(kc.paper, 10f, c); drawCircle(mc, 10f, c, style = Stroke(1.6f))
+        val c = Offset(n.x + NODE_W - 16f, n.y + 16f)
+        drawCircle(mc.copy(alpha = .2f), 10f, c)
         val m = tm.measure(mk, TextStyle(fontFamily = Mono, fontSize = 11.sp, color = mc, fontWeight = FontWeight.Bold), density = unit)
         drawText(m, topLeft = Offset(c.x - m.size.width / 2f, c.y - m.size.height / 2f))
     }
-    // puertos
+    // puertos (jacks)
     if (kind != NodeKind.TRIGGER && kind != null) {
         val p = inPort(n); val has = f.edges.any { it.to == n.id }
-        drawCircle(kc.paper, PORT_R, p); drawCircle(kc.dim, PORT_R, p, style = Stroke(2f)); if (has) drawCircle(kc.dim, 3.2f, p)
+        drawCircle(kc.paper, PORT_R + 1f, p); drawCircle(kc.muted, PORT_R, p, style = Stroke(2f)); if (has) drawCircle(kc.muted, 3.2f, p)
     }
     val ports = if (kind == NodeKind.CONDITION) listOf(PORT_TRUE, PORT_FALSE) else if (kind != null) listOf(PORT_OUT) else emptyList()
     for (pt in ports) {
-        val p = outPort(n, pt, spec); val c = when (pt) { PORT_TRUE -> kc.ok; PORT_FALSE -> kc.error; else -> kc.dim }
+        val p = outPort(n, pt, spec); val c = when (pt) { PORT_TRUE -> kc.ok; PORT_FALSE -> kc.error; else -> col }
         val has = f.edges.any { it.from == n.id && it.port == pt }
-        drawCircle(kc.paper, PORT_R, p); drawCircle(c, PORT_R, p, style = Stroke(2.2f)); if (has) drawCircle(c, 3.4f, p)
+        drawCircle(kc.paper, PORT_R + 1f, p); drawCircle(c, PORT_R, p, style = Stroke(2.4f)); if (has) drawCircle(c, 3.6f, p)
         if (kind == NodeKind.CONDITION) {
-            val lt = tm.measure(if (pt == PORT_TRUE) "sí" else "no", TextStyle(fontFamily = Mono, fontSize = 9.5.sp, color = c, fontWeight = FontWeight.Bold), density = unit)
+            val lt = tm.measure(if (pt == PORT_TRUE) "sí" else "no", TextStyle(fontFamily = Mono, fontSize = 10.sp, color = c, fontWeight = FontWeight.SemiBold), density = unit)
             drawText(lt, topLeft = Offset(p.x - 14f - lt.size.width, p.y - lt.size.height / 2f))
         }
     }

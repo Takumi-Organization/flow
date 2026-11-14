@@ -22,3 +22,5 @@ Las pruebas instrumentadas (`:app:connectedDebugAndroidTest`, emulador API 36) c
 - [docs/REQUISITOS.md](docs/REQUISITOS.md) — encargo original contrastado con el código.
 - [docs/SEGURIDAD.md](docs/SEGURIDAD.md) — permisos, receptores exportados y revisión de seguridad.
 - [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) — cómo añadir un nodo, mecanismos de ejecución, límites de Android.
+
+Diseño: sistema propio (Inter, esquinas continuas, tríada coral/violeta/menta, acento elegible) y capturas de las pantallas en [docs/capturas/](docs/capturas/), con el detalle en [docs/ESTADO.md](docs/ESTADO.md#rediseño-visual-2026-11-14).

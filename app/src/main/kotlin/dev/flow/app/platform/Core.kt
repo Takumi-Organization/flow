@@ -64,6 +64,8 @@ class AndroidEnv(private val ctx: Context, private val prefs: Prefs) : Environme
 
     @Suppress("DEPRECATION")
     override fun wifiSsid(): String? {
+        // `transportInfo` llega en API 29; antes se devuelve null y las condiciones de SSID no se cumplen.
+        if (android.os.Build.VERSION.SDK_INT < 29) return null
         val cm = ctx.getSystemService(ConnectivityManager::class.java)
         for (n in cm.allNetworks) {
             val caps = cm.getNetworkCapabilities(n) ?: continue
