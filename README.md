@@ -24,3 +24,6 @@ Las pruebas instrumentadas (`:app:connectedDebugAndroidTest`, emulador API 36) c
 - [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) — cómo añadir un nodo, mecanismos de ejecución, límites de Android.
 
 Diseño: sistema propio (Inter, esquinas continuas, tríada coral/violeta/menta, acento elegible) y capturas de las pantallas en [docs/capturas/](docs/capturas/), con el detalle en [docs/ESTADO.md](docs/ESTADO.md#rediseño-visual-2026-11-14).
+
+## Estado de instalación
+Compila y pasa pruebas y lint (2026-11-15), pero **no está instalada en el móvil físico**: no estaba conectado. Comando exacto en [docs/ESTADO.md](docs/ESTADO.md#instalación-en-el-móvil).

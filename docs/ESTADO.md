@@ -1,4 +1,4 @@
-# Estado real (2026-11-13)
+# Estado real (2026-11-15)
 
 ## Verificado
 - `./gradlew :engine:test`: 48 pruebas JVM, 0 fallos (motor, validador, planificación, exportación, variables, comparaciones, disparadores, distancia/cruce de zonas y planificación de calendario).
@@ -27,7 +27,7 @@
 ## No verificado
 - **Hardware real**: el aviso `ACL_CONNECTED` del proceso Bluetooth del sistema y el `AudioDeviceCallback` con un auricular de cable o USB reales. El emulador no los simula y esas difusiones están protegidas (ni el shell puede enviarlas).
 - **Otro nivel de API**: solo hay instalada la imagen `android-36 google_apis_playstore`; no se descargó ninguna otra. `minSdk` y comportamiento en Android 10–15 sin probar.
-- Móvil físico: no se ha usado (regla del encargo).
+- **Móvil físico 78af40b4: NO instalada.** El 2026-11-15 `adb devices` no lista ningún dispositivo (cable, depuración USB o autorización pendientes). APK listo, ver «Instalación».
 - El flujo de conceder «Permitir siempre» a mano en un móvil real (en el emulador se concede con `pm grant`).
 - Sonido audible.
 
@@ -47,3 +47,16 @@
 - **Navegación externa**: `launchMode="singleTop"` y extra `flowId`; una notificación abre el editor aunque la app ya esté abierta, sin apilar otra actividad.
 - **Capturas**: 40 en [capturas/](capturas/) (grafito, washi y amoled × inicio 1–3, biblioteca, actividad, ejecución, ajustes 1–3, editor y editor con prueba) más las `antes-*` del diseño anterior. Se regeneran con `scripts/capturas.sh <serial> <prefijo> <tema>` tras sembrar datos con `DeviceSeedTest`.
 - **Comprobado**: `:engine:test` (48), `:app:lintDebug` y `:app:assembleDebug` en verde; capturas revisadas y sin pantallas negras. `scripts/jank.sh` queda para medir en un dispositivo con el APK de release (el de depuración no es representativo).
+
+## Cierre (2026-11-15)
+- Revisión del trabajo previo: `:engine:test` (48), `:app:lintDebug` con 0 incidencias (informe XML sin `<issue>`), `:app:assembleDebug` y `:app:assembleRelease` compilan. Corregida una construcción de `EditorCanvas.kt` que el compilador avisa que será error en versiones futuras de Kotlin (anotaciones sobre expresiones de bloque).
+- `app-release-unsigned.apk` no es instalable (sin firma; no hay almacén de claves de lanzamiento en el repositorio, a propósito).
+
+## Instalación en el móvil
+APK: `app/build/outputs/apk/debug/app-debug.apk` (14 MB). Con el móvil conectado y la depuración USB autorizada:
+```
+adb -s 78af40b4 install -r ~/Proyectos/flow/app/build/outputs/apk/debug/app-debug.apk
+adb -s 78af40b4 shell monkey -p dev.flow.app -c android.intent.category.LAUNCHER 1
+adb -s 78af40b4 logcat -d -s AndroidRuntime:E | tail
+```
+`-r` conserva los datos. Comprobar el nombre de paquete con `aapt dump badging` si `monkey` no arranca.

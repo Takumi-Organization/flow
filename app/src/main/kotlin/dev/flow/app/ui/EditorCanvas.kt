@@ -159,9 +159,10 @@ fun FlowCanvas(
                     if (!moved && total > slop) {
                         moved = true
                         if (h is Hit.Node) { // empezar a arrastrar: si no estaba seleccionado, se selecciona solo
-                            val id = (h as Hit.Node).id; val sel = cur.value[1] as Set<*>
-                            @Suppress("UNCHECKED_CAST") if (id !in sel) cb.onSelect(setOf(id))
-                            @Suppress("UNCHECKED_CAST") dragIds = if (id in sel) (sel as Set<String>) else setOf(id)
+                            val id = h.id
+                            @Suppress("UNCHECKED_CAST") val sel = cur.value[1] as Set<String>
+                            if (id !in sel) cb.onSelect(setOf(id))
+                            dragIds = if (id in sel) sel else setOf(id)
                         }
                         cb.onSelectEdge(null)
                     }
