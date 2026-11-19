@@ -13,7 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -197,7 +196,7 @@ fun EditorScreen(graph: Graph, flowId: String, onBack: () -> Unit, onOpenRun: (S
                 MiniBtn("+") { vp.scale = (vp.scale * 1.25f).coerceAtMost(2.5f) }
                 MiniBtn("−") { vp.scale = (vp.scale / 1.25f).coerceAtLeast(0.3f) }
             }
-            Box(Modifier.align(Alignment.BottomEnd).padding(16.dp).size(60.dp).shadow(16.dp, androidx.compose.foundation.shape.CircleShape, ambientColor = k.accent.copy(alpha = .4f), spotColor = k.accent.copy(alpha = .6f)).clip(androidx.compose.foundation.shape.CircleShape).background(k.accent).clickable {
+            Box(Modifier.align(Alignment.BottomEnd).padding(16.dp).size(60.dp).clip(androidx.compose.foundation.shape.CircleShape).background(k.accent).clickable {
                 val from = one?.takeIf { graph.registry[it.type]?.kind != null }?.let { it.id to (st.firstFreePort(it.id) ?: PORT_OUT) }
                 showPalette = from to null }, contentAlignment = Alignment.Center) {
                 PIcon("plus", k.onAccent, 28.dp)
@@ -209,7 +208,7 @@ fun EditorScreen(graph: Graph, flowId: String, onBack: () -> Unit, onOpenRun: (S
         when {
             edge != null -> EdgePanel(st, edge, graph.registry)
             one != null -> NodePanel(st, one, graph, vp.centerInGraph(dens))
-            st.selected.size > 1 -> Row(Modifier.fillMaxWidth().shadow(20.dp, Sq28).clip(Sq28).background(k.raised).navigationBarsPadding().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            st.selected.size > 1 -> Row(Modifier.fillMaxWidth().clip(Sq28).background(k.raised).navigationBarsPadding().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("${st.selected.size} nodos", style = T.body, color = k.ink, modifier = Modifier.weight(1f))
                 FButton("Duplicar", { st.duplicateSelection() }); FButton("Eliminar", { st.deleteSelection() }, danger = true); FButton("Limpiar", { st.selected = emptySet() })
             }
@@ -232,7 +231,7 @@ fun EditorScreen(graph: Graph, flowId: String, onBack: () -> Unit, onOpenRun: (S
             title = { Text("Nombre del flujo", style = T.h2) }, text = { FField(t, { t = it }, "Nombre") }, containerColor = k.raised) }
 }
 
-@Composable private fun MiniBtn(t: String, onClick: () -> Unit) = Box(Modifier.size(44.dp).shadow(8.dp, androidx.compose.foundation.shape.CircleShape).clip(androidx.compose.foundation.shape.CircleShape).background(k.raised).border(.8.dp, k.line, androidx.compose.foundation.shape.CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) { Text(t, style = T.h1, color = k.ink) }
+@Composable private fun MiniBtn(t: String, onClick: () -> Unit) = Box(Modifier.size(44.dp).clip(androidx.compose.foundation.shape.CircleShape).background(k.raised).border(.8.dp, k.line, androidx.compose.foundation.shape.CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) { Text(t, style = T.h1, color = k.ink) }
 
 @Composable
 private fun EdgePanel(st: EditorState, e: EdgeDef, reg: NodeRegistry) {
@@ -256,7 +255,7 @@ private fun NodePanel(st: EditorState, n: NodeDef, graph: Graph, center: Offset)
     var tick by remember { mutableIntStateOf(0) }
     val request = rememberCapRequester { tick++ }
     val flows by graph.repo.flows.collectAsState(emptyList())
-    Column(Modifier.fillMaxWidth().heightIn(max = 400.dp).shadow(20.dp, Sq28).clip(Sq28).background(k.raised).navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxWidth().heightIn(max = 400.dp).clip(Sq28).background(k.raised).navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(Modifier.align(Alignment.CenterHorizontally).size(38.dp, 4.dp).background(k.line.copy(alpha = .3f), androidx.compose.foundation.shape.RoundedCornerShape(50)))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {

@@ -84,6 +84,8 @@ class MainActivity : ComponentActivity() {
                 Box(Modifier.fillMaxSize().background(k.paper)) {
                     val isTab = route in TAB_ROUTES
                     BackHandler(enabled = !isTab || route != "home") { pop() }
+                    val navGlass = dev.flow.app.ui.rememberGlassBackdrop()
+                    Box(Modifier.fillMaxSize().glassSource(navGlass)) {
                     AnimatedContent(route, Modifier.fillMaxSize(), label = "route", transitionSpec = {
                         val toPush = targetState !in TAB_ROUTES && initialState in TAB_ROUTES
                         val fromPush = initialState !in TAB_ROUTES && targetState in TAB_ROUTES
@@ -109,12 +111,9 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                    AnimatedVisibility(isTab, Modifier.align(Alignment.BottomCenter), enter = fadeIn(), exit = fadeOut(tween(120))) {
-                        // el contenido se desvanece bajo la barra, como en iOS
-                        Box(Modifier.fillMaxWidth().height(170.dp).background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color.Transparent, k.paper.copy(alpha = .92f), k.paper))))
                     }
                     AnimatedVisibility(isTab, Modifier.align(Alignment.BottomCenter), enter = slideInVertically(spring(.8f, 400f)) { it } + fadeIn(), exit = slideOutVertically(tween(180)) { it } + fadeOut(tween(120))) {
-                        BottomNav(route) { tab(it) }
+                        androidx.compose.runtime.CompositionLocalProvider(dev.flow.app.ui.LocalGlassBackdrop provides navGlass) { BottomNav(route) { tab(it) } }
                     }
                 }
             }

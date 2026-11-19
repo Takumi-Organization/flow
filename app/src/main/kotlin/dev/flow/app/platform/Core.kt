@@ -49,7 +49,7 @@ class Prefs(ctx: Context) {
     var theme: String
         get() = sp.getString("theme", "grafito") ?: "grafito"; set(v) { sp.edit().putString("theme", v).apply() }
     var accent: Int
-        get() = sp.getInt("accent", 0); set(v) { sp.edit().putInt("accent", v).apply() }
+        get() = sp.getInt("accent", 3); set(v) { sp.edit().putInt("accent", v).apply() }
 }
 
 class AndroidEnv(private val ctx: Context, private val prefs: Prefs) : Environment {

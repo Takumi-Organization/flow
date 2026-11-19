@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.platform.LocalView
@@ -67,18 +66,17 @@ fun Modifier.springPress(src: MutableInteractionSource, depth: Float = .965f): M
     return this.graphicsLayer { scaleX = s; scaleY = s }
 }
 
-/** Tarjeta con profundidad: superficie elevada, filete de luz arriba, sombra con el tono del flujo en claro y un resplandor radial muy tenue en oscuro. */
+/** Tarjeta plana: superficie elevada con filete de 1 dp (sin sombra ni resplandor). */
 @Composable
 fun Panel(modifier: Modifier = Modifier, accent: Color? = null, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     val src = remember { MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
     val kk = k
     val bg by animateColorAsState(if (pressed) kk.high else kk.raised, tween(120), label = "bg")
-    val rim = if (kk.dark) Brush.verticalGradient(listOf(Color.White.copy(alpha = .16f), Color.White.copy(alpha = .03f))) else SolidColor(kk.line)
+    val rim = SolidColor(kk.line)
     Column(modifier.fillMaxWidth().then(if (onClick != null) Modifier.springPress(src, .975f) else Modifier)
-        .then(if (!kk.dark) Modifier.shadow(14.dp, Sq28, ambientColor = Color(0x1A1B1030), spotColor = (accent ?: kk.ink).copy(alpha = .28f)) else Modifier)
+        .then(if (!kk.dark) Modifier else Modifier)
         .clip(Sq28).background(bg)
-        .drawBehind { if (accent != null) drawRect(Brush.radialGradient(listOf(accent.copy(alpha = if (kk.dark) .20f else .12f), Color.Transparent), Offset(size.width * .12f, 0f), size.width * .85f)) }
         .border(.8.dp, rim, Sq28)
         .then(if (onClick != null) Modifier.clickable(src, null, role = Role.Button, onClick = onClick) else Modifier)
         .padding(18.dp), content = content)
@@ -91,7 +89,7 @@ fun FButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, pr
     val fg = if (!enabled) kk.faint else if (primary) kk.onAccent else if (danger) kk.error else kk.ink
     val fill: Brush = when {
         !enabled -> SolidColor(kk.high.copy(alpha = .5f))
-        primary -> Brush.verticalGradient(listOf(lerp(kk.accent, Color.White, .14f), kk.accent))
+        primary -> SolidColor(kk.accent)
         danger -> SolidColor(kk.error.copy(alpha = .14f))
         else -> SolidColor(kk.high)
     }

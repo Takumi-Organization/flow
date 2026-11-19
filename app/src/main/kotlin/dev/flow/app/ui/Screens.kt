@@ -20,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
@@ -44,18 +43,16 @@ import java.time.LocalDateTime
 // ───────────────────────────── barra de pestañas flotante ─────────────────────────────
 private val TABS = listOf("home" to "Inicio", "library" to "Presets", "history" to "Actividad", "settings" to "Ajustes")
 
-/** Barra flotante en cápsula: sombra amplia y suave, filete de luz y un selector que se desliza con muelle entre pestañas. */
+/** Barra flotante de cristal (desenfoque real del contenido) con un selector que se desliza con muelle entre pestañas. */
 @Composable
 fun BottomNav(route: String, onTab: (String) -> Unit) {
     val view = LocalView.current; val kk = k; val rm = reduceMotion()
     val idx = TABS.indexOfFirst { it.first == route }.coerceAtLeast(0)
-    val rim = if (kk.dark) Brush.verticalGradient(listOf(Color.White.copy(alpha = .20f), Color.White.copy(alpha = .05f))) else SolidColor(kk.line)
     BoxWithConstraints(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp)) {
         val tabW = maxWidth / TABS.size
         val x by animateDpAsState(tabW * idx, if (rm) snap() else spring(.72f, 520f), label = "tabx")
-        Box(Modifier.fillMaxWidth().height(68.dp).shadow(26.dp, RoundedCornerShape(34.dp), ambientColor = Color.Black.copy(alpha = if (kk.dark) .6f else .12f), spotColor = Color.Black.copy(alpha = if (kk.dark) .7f else .18f))
-            .clip(RoundedCornerShape(34.dp)).background(kk.raised.copy(alpha = .94f)).border(.8.dp, rim, RoundedCornerShape(34.dp))) {
-            Box(Modifier.offset(x = x).width(tabW).fillMaxHeight().padding(5.dp).clip(RoundedCornerShape(30.dp)).background(kk.ink.copy(alpha = if (kk.dark) .10f else .07f)))
+        Box(Modifier.fillMaxWidth().height(68.dp).glass(RoundedCornerShape(20.dp))) {
+            Box(Modifier.offset(x = x).width(tabW).fillMaxHeight().padding(5.dp).clip(RoundedCornerShape(14.dp)).background(kk.accent.copy(alpha = if (kk.dark) .16f else .11f)))
             Row(Modifier.fillMaxSize()) {
                 TABS.forEachIndexed { i, (r, t) ->
                     val on = i == idx
@@ -160,7 +157,7 @@ fun HomeScreen(graph: Graph, openEditor: (String) -> Unit, openRun: (String) -> 
                     Section("", "Disparo manual")
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         quick.forEachIndexed { i, f -> val r = running[f.id] == true; val tone = flowTone(f.id, kk); val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                            Column(Modifier.stagger(i).width(160.dp).height(118.dp).springPress(src, .94f).clip(Sq28).background(Brush.linearGradient(listOf(tone.copy(alpha = .30f), tone.copy(alpha = .10f)))).border(.8.dp, tone.copy(alpha = .35f), Sq28)
+                            Column(Modifier.stagger(i).width(160.dp).height(118.dp).springPress(src, .94f).clip(Sq28).background(tone.copy(alpha = .14f)).border(.8.dp, tone.copy(alpha = .35f), Sq28)
                                 .clickable(src, null, role = Role.Button) { view.hap(Hap.HEAVY)
                                     if (r) graph.cancel(f.id) else if (Validator.hasErrors(Validator.validate(f, graph.registry))) scope.launch { msg.showSnackbar("«${f.name}» tiene errores: ábrelo para corregirlos") } else graph.runManual(f.id) }.padding(16.dp),
                                 verticalArrangement = Arrangement.SpaceBetween) {
@@ -217,8 +214,8 @@ fun HomeScreen(graph: Graph, openEditor: (String) -> Unit, openRun: (String) -> 
         // botón principal
         val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
         Row(Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 22.dp, bottom = 104.dp).stagger(3).springPress(src, .93f)
-            .shadow(18.dp, RoundedCornerShape(50), ambientColor = kk.accent.copy(alpha = .4f), spotColor = kk.accent.copy(alpha = .6f)).clip(RoundedCornerShape(50))
-            .background(Brush.verticalGradient(listOf(androidx.compose.ui.graphics.lerp(kk.accent, Color.White, .16f), kk.accent))).clickable(src, null, role = Role.Button) { view.hap(Hap.CONFIRM); newDialog = true }
+            .clip(RoundedCornerShape(50))
+            .background(kk.accent).clickable(src, null, role = Role.Button) { view.hap(Hap.CONFIRM); newDialog = true }
             .padding(horizontal = 22.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             PIcon("plus", kk.onAccent, 22.dp); Spacer(Modifier.width(8.dp)); Text("Nuevo", style = T.h2, color = kk.onAccent)
         }

@@ -42,9 +42,17 @@ class Kami(
     val trig: Color, val cond: Color, val act: Color,
 )
 
+/**
+ * Acentos de Ryoku Glass. El ORDEN se conserva (la preferencia guarda el índice): 0 Bermellón (antes Coral), 1 Fucsia
+ * (Rosa), 2 Egeo (Violeta), 3 Oro (Ámbar), 4 Lima (Menta). El color de la lista es la variante oscura; en claro se usa
+ * [accentLight] (más oscura, para que el acento como texto o relleno llegue a 4,5:1 sobre el papel claro).
+ */
 val Accents = listOf(
-    Color(0xFFFF6B3D) to "Coral", Color(0xFFFF4F8B) to "Rosa", Color(0xFFA27BFF) to "Violeta", Color(0xFFFFB224) to "Ámbar", Color(0xFF2EE6A6) to "Menta",
+    Color(0xFFFF5A4A) to "Bermellón", Color(0xFFFF6FB1) to "Fucsia", Color(0xFF62B6E8) to "Egeo", Color(0xFFF2B33D) to "Oro", Color(0xFFB6E04A) to "Lima",
 )
+private val AccentLight = listOf(Color(0xFFD12B1F), Color(0xFFC4166F), Color(0xFF0B6B99), Color(0xFF8F5F00), Color(0xFF4F7A00))
+private val AccentOnDark = listOf(Color(0xFF1B0805), Color(0xFF21040F), Color(0xFF04141D), Color(0xFF1D1300), Color(0xFF121A00))
+private fun accentIndex(c: Color) = Accents.indexOfFirst { it.first == c }.coerceAtLeast(0)
 
 /** Tonos por flujo: seis matices (coral, rosa, violeta, ámbar, menta, azul) con luminosidad percibida parecida. */
 val FlowTones = listOf(Color(0xFFFF6B3D), Color(0xFFFF4F8B), Color(0xFFA27BFF), Color(0xFFFFB224), Color(0xFF2EE6A6), Color(0xFF5B8CFF))
@@ -53,21 +61,21 @@ fun flowTone(id: String, k: Kami): Color {
     return if (k.dark) c else lerp(c, k.ink, .22f)
 }
 
-private fun lum(c: Color) = 0.2126f * c.red + 0.7152f * c.green + 0.0722f * c.blue
-
+/** `accent` llega siempre como la variante oscura de [Accents]; en claro se sustituye por la clara. */
 fun kami(theme: String, systemDark: Boolean, accent: Color): Kami {
     val amoled = theme == "amoled"
     val dark = when (theme) { "washi" -> false; "auto" -> systemDark; else -> true }
-    val onAccent = if (lum(accent) > .5f) Color(0xFF14121A) else Color(0xFFFFFFFF)
+    val ai = accentIndex(accent)
     return if (dark) {
-        Kami(true, amoled, if (amoled) Color(0xFF000000) else Color(0xFF07070B), if (amoled) Color(0xFF0C0C11) else Color(0xFF111118), if (amoled) Color(0xFF17171F) else Color(0xFF1B1B25),
-            Color(0xFFF5F5FA), Color(0xFFC4C4D2), Color(0xFF8D8D9E), Color(0xFF5C5C6D), Color(0xFFFFFFFF).copy(alpha = .10f),
-            Color(0xFFC4C4D2), Color(0xFFFFB84D), Color(0xFF38E0A8), Color(0xFFFFB84D), Color(0xFFFF5470), accent, accent, onAccent,
+        Kami(true, amoled, if (amoled) Color(0xFF000000) else Color(0xFF0F1115), if (amoled) Color(0xFF0D0F13) else Color(0xFF171A20), if (amoled) Color(0xFF181B21) else Color(0xFF232830),
+            Color(0xFFECEFF4), Color(0xFFB4BBC7), Color(0xFF8E97A6), Color(0xFF5F6877), Color(0xFFECEFF4).copy(alpha = .10f),
+            Color(0xFFB4BBC7), Color(0xFFF2B33D), Color(0xFF6FD3A6), Color(0xFFF0B25E), Color(0xFFFF7A70), Accents[ai].first, Accents[ai].first, AccentOnDark[ai],
             Color(0xFFFF6B3D), Color(0xFFB58CFF), Color(0xFF38E0A8))
     } else {
-        val ink = Color(0xFF16141D)
-        Kami(false, false, Color(0xFFF3F1F8), Color(0xFFFFFFFF), Color(0xFFE9E6F1), ink, Color(0xFF4B4958), Color(0xFF76737F), Color(0xFFA9A6B3), ink.copy(alpha = .09f),
-            Color(0xFF4B4958), Color(0xFFB26A00), Color(0xFF0E9F72), Color(0xFFB26A00), Color(0xFFD42A4C), accent, lerp(accent, ink, .18f), onAccent,
+        val ink = Color(0xFF14171C)
+        val a = AccentLight[ai]
+        Kami(false, false, Color(0xFFF4F5F7), Color(0xFFFFFFFF), Color(0xFFE9ECF0), ink, Color(0xFF4A515C), Color(0xFF5F6773), Color(0xFF9AA2AE), ink.copy(alpha = .11f),
+            Color(0xFF4A515C), Color(0xFF8F5F00), Color(0xFF1B6B49), Color(0xFF8A5A00), Color(0xFFB3261E), a, lerp(a, ink, .2f), Color.White,
             Color(0xFFE2501F), Color(0xFF7E4FE0), Color(0xFF0E9F72))
     }
 }
@@ -92,8 +100,19 @@ object T {
     val num = TextStyle(fontFamily = Disp, fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 36.sp, letterSpacing = (-1).sp, fontFeatureSettings = TN)
 }
 
-/** Esquina continua (superelipse): la curva entra tangente en el lado recto, como las esquinas de iOS, sin el «codo» de un arco circular. */
-class Squircle(private val radius: Dp, private val n: Float = 4.6f) : Shape {
+/**
+ * Ryoku Glass usa radios pequeños (6 · 10 · 12 · 16 · 20). Se conserva el nombre `Squircle` y el radio de cada sitio, y se
+ * traducen a la escala nueva en un solo punto.
+ */
+fun glassRadius(r: Dp): Dp = when { r <= 8.dp -> 6.dp; r <= 14.dp -> 10.dp; r <= 22.dp -> 12.dp; r <= 30.dp -> 16.dp; else -> 20.dp }
+class Squircle(private val radius: Dp) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline =
+        androidx.compose.foundation.shape.RoundedCornerShape(glassRadius(radius)).createOutline(size, layoutDirection, density)
+}
+
+/** Antigua superelipse (ya sin uso; se conserva por si se recupera). */
+@Suppress("unused")
+private class SuperSquircle(private val radius: Dp, private val n: Float = 4.6f) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
         val w = size.width; val h = size.height
         val c = minOf(radius.value * density.density * 1.35f, w / 2f, h / 2f)
