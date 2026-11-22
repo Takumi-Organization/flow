@@ -5,3 +5,7 @@ local.properties
 .idea/
 .kotlin/
 captures/
+keystore.properties
+*.jks
+*.keystore
+*.p12
