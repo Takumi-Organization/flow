@@ -93,6 +93,7 @@ Sigue la identidad visual de Takumi-Organization: negro y tinta clara, monocromo
 
 - Bluetooth, auriculares y ubicación en hardware real, y la ejecución real de cada preset (solo se verifica su carga y validación), sin verificar. Detalle en [docs/ESTADO.md](docs/ESTADO.md).
 - En emulador, 16 de 23 pruebas instrumentadas pasaban en la última ejecución registrada; las 7 de `Device*` dependen del hardware o del estado del emulador.
+- Defecto visual conocido, sin corregir: con el zoom por defecto el editor de lienzo recorta el flujo por el borde derecho (hay que desplazar o alejar el zoom).
 - Verificada en emulador y en un móvil físico (arranque sin errores); sin probar en otros fabricantes.
 
 ## Licencia
