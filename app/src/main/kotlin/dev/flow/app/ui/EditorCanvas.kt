@@ -226,20 +226,24 @@ fun FlowCanvas(
     }
 }
 
+/** Rectángulo con la esquina superior derecha cortada en diagonal (el tajo de Takumi). */
+private fun cutRect(r: Rect, cut: Float): Path = Path().apply {
+    moveTo(r.left, r.top); lineTo(r.right - cut, r.top); lineTo(r.right, r.top + cut); lineTo(r.right, r.bottom); lineTo(r.left, r.bottom); close()
+}
+
 private fun DrawScope.drawNode(n: NodeDef, spec: NodeSpec?, sel: Boolean, st: NodeState?, issue: Severity?, hover: Boolean, f: FlowDef, kc: Kami, tm: TextMeasurer, unit: Density) {
     val kind = spec?.kind
     val col = if (spec == null) kc.error else kindColor(kind!!, kc)
     val rect = Rect(n.x, n.y, n.x + NODE_W, n.y + NODE_H)
-    val rr = CornerRadius(16f)
     val dim = st == NodeState.SKIPPED
     // halo según estado
     val ring = when { st == NodeState.RUNNING -> kc.accent; st == NodeState.ERROR -> kc.error; st == NodeState.COMPLETED -> kc.ok; else -> null }
-    if (ring != null) drawRoundRect(ring.copy(alpha = .22f), Offset(rect.left - 6f, rect.top - 6f), Size(NODE_W + 12f, NODE_H + 12f), CornerRadius(22f))
-    if (sel) drawRoundRect(kc.signal.copy(alpha = .25f), Offset(rect.left - 7f, rect.top - 7f), Size(NODE_W + 14f, NODE_H + 14f), CornerRadius(23f))
-    drawRoundRect(if (kc.dark) kc.raised else Color.White, rect.topLeft, rect.size, rr)
-    drawRoundRect(kc.high.copy(alpha = if (kc.dark) .35f else .0f), rect.topLeft, Size(NODE_W, NODE_H / 2f), rr)
-    val stroke = when { ring != null -> ring; sel -> kc.signal; hover -> kc.ink; else -> kc.ink.copy(alpha = if (kc.dark) .16f else .14f) }
-    drawRoundRect(stroke, rect.topLeft, rect.size, rr, style = Stroke(if (ring != null || sel) 2.6f else 1.2f, pathEffect = if (dim) PathEffect.dashPathEffect(floatArrayOf(7f, 6f)) else null))
+    if (ring != null) drawPath(cutRect(Rect(rect.left - 6f, rect.top - 6f, rect.right + 6f, rect.bottom + 6f), 24f), ring.copy(alpha = .22f))
+    if (sel) drawPath(cutRect(Rect(rect.left - 7f, rect.top - 7f, rect.right + 7f, rect.bottom + 7f), 25f), kc.signal.copy(alpha = .25f))
+    val shape = cutRect(rect, 18f)
+    drawPath(shape, if (kc.dark) kc.raised else Color.White)
+    val stroke = when { ring != null -> ring; sel -> kc.signal; hover -> kc.ink; else -> kc.line }
+    drawPath(shape, stroke, style = Stroke(if (ring != null || sel) 2.6f else 1.2f, pathEffect = if (dim) PathEffect.dashPathEffect(floatArrayOf(7f, 6f)) else null))
     // chip del tipo
     val chip = Offset(n.x + 22f, n.y + 22f)
     drawCircle(col.copy(alpha = if (dim) .10f else .22f), 13f, chip)

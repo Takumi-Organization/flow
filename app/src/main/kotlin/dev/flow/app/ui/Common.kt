@@ -10,7 +10,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
@@ -90,13 +89,13 @@ fun FButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, pr
     val fill: Brush = when {
         !enabled -> SolidColor(kk.high.copy(alpha = .5f))
         primary -> SolidColor(kk.accent)
-        danger -> SolidColor(kk.error.copy(alpha = .14f))
+        danger -> SolidColor(Color.Transparent)
         else -> SolidColor(kk.high)
     }
-    Box(modifier.heightIn(min = 52.dp).springPress(src).clip(Sq20).background(fill)
+    Box(modifier.heightIn(min = 52.dp).springPress(src).clip(Sq20).background(fill).then(if (primary || !enabled) Modifier else Modifier.border(1.dp, if (danger) kk.ink else kk.line, Sq20))
         .clickable(src, null, enabled = enabled, role = Role.Button) { view.hap(if (primary) Hap.CONFIRM else Hap.CLICK); onClick() }
         .padding(horizontal = 20.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
-        Text(text, style = T.h2, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(if (danger) "✕ " + text.uppercase() else text.uppercase(), style = T.label.copy(fontSize = 12.sp, letterSpacing = 1.4.sp), color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -106,9 +105,9 @@ fun Chip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifie
     val view = LocalView.current; val src = remember { MutableInteractionSource() }; val kk = k
     val bg by animateColorAsState(if (selected) kk.ink else kk.high, spring(.8f, 700f), label = "chipbg")
     val fg by animateColorAsState(if (selected) kk.paper else kk.dim, spring(.8f, 700f), label = "chipfg")
-    Box(modifier.heightIn(min = 44.dp).springPress(src, .94f).clip(RoundedCornerShape(50)).background(bg)
+    Box(modifier.heightIn(min = 44.dp).springPress(src, .94f).clip(TkSm).background(bg).border(1.dp, if (selected) kk.ink else kk.line, TkSm)
         .clickable(src, null, role = Role.Tab) { view.hap(Hap.TICK); onClick() }.padding(horizontal = 18.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
-        Text(text, style = T.small.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), color = fg)
+        Text(text.uppercase(), style = T.label.copy(fontSize = 12.sp), color = fg)
     }
 }
 

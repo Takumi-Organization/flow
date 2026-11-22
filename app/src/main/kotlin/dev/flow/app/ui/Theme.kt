@@ -8,11 +8,10 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.*
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -20,10 +19,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.flow.app.R
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.pow
-import kotlin.math.sin
 
 /**
  * Sistema de color de FLOW.
@@ -43,95 +38,70 @@ class Kami(
 )
 
 /**
- * Acentos de Ryoku Glass. El ORDEN se conserva (la preferencia guarda el índice): 0 Bermellón (antes Coral), 1 Fucsia
- * (Rosa), 2 Egeo (Violeta), 3 Oro (Ámbar), 4 Lima (Menta). El color de la lista es la variante oscura; en claro se usa
- * [accentLight] (más oscura, para que el acento como texto o relleno llegue a 4,5:1 sobre el papel claro).
+ * Takumi no tiene acento. Se conserva la lista (la preferencia guarda un índice) pero todos los valores resuelven a la
+ * tinta; el selector ya no se muestra.
  */
-val Accents = listOf(
-    Color(0xFFFF5A4A) to "Bermellón", Color(0xFFFF6FB1) to "Fucsia", Color(0xFF62B6E8) to "Egeo", Color(0xFFF2B33D) to "Oro", Color(0xFFB6E04A) to "Lima",
-)
-private val AccentLight = listOf(Color(0xFFD12B1F), Color(0xFFC4166F), Color(0xFF0B6B99), Color(0xFF8F5F00), Color(0xFF4F7A00))
-private val AccentOnDark = listOf(Color(0xFF1B0805), Color(0xFF21040F), Color(0xFF04141D), Color(0xFF1D1300), Color(0xFF121A00))
-private fun accentIndex(c: Color) = Accents.indexOfFirst { it.first == c }.coerceAtLeast(0)
+val Accents = listOf(Color(0xFFF2F2F2) to "Tinta")
 
-/** Tonos por flujo: seis matices (coral, rosa, violeta, ámbar, menta, azul) con luminosidad percibida parecida. */
-val FlowTones = listOf(Color(0xFFFF6B3D), Color(0xFFFF4F8B), Color(0xFFA27BFF), Color(0xFFFFB224), Color(0xFF2EE6A6), Color(0xFF5B8CFF))
-fun flowTone(id: String, k: Kami): Color {
-    val c = FlowTones[abs(id.hashCode()) % FlowTones.size]
-    return if (k.dark) c else lerp(c, k.ink, .22f)
-}
+/** Takumi: sin tono por flujo; cada flujo se distingue por su nombre. */
+fun flowTone(@Suppress("UNUSED_PARAMETER") id: String, k: Kami): Color = k.ink
 
-/** `accent` llega siempre como la variante oscura de [Accents]; en claro se sustituye por la clara. */
-fun kami(theme: String, systemDark: Boolean, accent: Color): Kami {
+/**
+ * Takumi (tokens.json). Estados (ok/aviso/error) = tinta: se distinguen por glifo (✓ ▲ ✕ ■) y texto, nunca por color.
+ * Disparador / condición / acción se distinguen por luminancia (y por la forma y la etiqueta del nodo).
+ */
+fun kami(theme: String, systemDark: Boolean, @Suppress("UNUSED_PARAMETER") accent: Color): Kami {
     val amoled = theme == "amoled"
     val dark = when (theme) { "washi" -> false; "auto" -> systemDark; else -> true }
-    val ai = accentIndex(accent)
     return if (dark) {
-        Kami(true, amoled, if (amoled) Color(0xFF000000) else Color(0xFF0F1115), if (amoled) Color(0xFF0D0F13) else Color(0xFF171A20), if (amoled) Color(0xFF181B21) else Color(0xFF232830),
-            Color(0xFFECEFF4), Color(0xFFB4BBC7), Color(0xFF8E97A6), Color(0xFF5F6877), Color(0xFFECEFF4).copy(alpha = .10f),
-            Color(0xFFB4BBC7), Color(0xFFF2B33D), Color(0xFF6FD3A6), Color(0xFFF0B25E), Color(0xFFFF7A70), Accents[ai].first, Accents[ai].first, AccentOnDark[ai],
-            Color(0xFFFF6B3D), Color(0xFFB58CFF), Color(0xFF38E0A8))
+        val ink = Color(0xFFF2F2F2)
+        Kami(true, amoled, Color(0xFF000000), Color(0xFF080808), Color(0xFF111111),
+            ink, Color(0xFFC9C9C9), Color(0xFF8C8C8C), Color(0xFF4A4A4A), Color(0xFF3A3A3A),
+            Color(0xFFC9C9C9), Color(0xFF8C8C8C), ink, ink, ink, ink, ink, Color(0xFF000000),
+            Color(0xFFF2F2F2), Color(0xFFB0B0B0), Color(0xFF7C7C7C))
     } else {
-        val ink = Color(0xFF14171C)
-        val a = AccentLight[ai]
-        Kami(false, false, Color(0xFFF4F5F7), Color(0xFFFFFFFF), Color(0xFFE9ECF0), ink, Color(0xFF4A515C), Color(0xFF5F6773), Color(0xFF9AA2AE), ink.copy(alpha = .11f),
-            Color(0xFF4A515C), Color(0xFF8F5F00), Color(0xFF1B6B49), Color(0xFF8A5A00), Color(0xFFB3261E), a, lerp(a, ink, .2f), Color.White,
-            Color(0xFFE2501F), Color(0xFF7E4FE0), Color(0xFF0E9F72))
+        val ink = Color(0xFF0A0A0A)
+        Kami(false, false, Color(0xFFF4F4F4), Color(0xFFFFFFFF), Color(0xFFEBEBEB),
+            ink, Color(0xFF333333), Color(0xFF6B6B6B), Color(0xFFB0B0B0), Color(0xFFC0C0C0),
+            Color(0xFF333333), Color(0xFF6B6B6B), ink, ink, ink, ink, ink, Color(0xFFF4F4F4),
+            Color(0xFF0A0A0A), Color(0xFF4F4F4F), Color(0xFF8A8A8A))
     }
 }
 
 val LocalKami = staticCompositionLocalOf { kami("grafito", true, Accents[0].first) }
 
-private val Disp = FontFamily(Font(R.font.inter_display_semibold, FontWeight.SemiBold), Font(R.font.inter_display_bold, FontWeight.Bold), Font(R.font.inter_display_extrabold, FontWeight.ExtraBold))
-/** Inter (tamaño óptico de texto): cuerpo e interfaz. */
-val Mono = FontFamily(Font(R.font.inter_text_regular, FontWeight.Normal), Font(R.font.inter_text_medium, FontWeight.Medium), Font(R.font.inter_text_semibold, FontWeight.SemiBold), Font(R.font.inter_text_semibold, FontWeight.Bold))
+@OptIn(ExperimentalTextApi::class)
+private fun outfit(w: Int, key: FontWeight) = Font(R.font.outfit_variable, key, variationSettings = FontVariation.Settings(FontVariation.weight(w)))
+/** Outfit: pesos de la app → pesos Takumi (lo «Bold» de títulos y cifras pasa a 200, el cuerpo a 300, lo enfatizado a 500). */
+private val Disp = FontFamily(outfit(200, FontWeight.SemiBold), outfit(200, FontWeight.Bold), outfit(200, FontWeight.ExtraBold))
+val Mono = FontFamily(outfit(300, FontWeight.Normal), outfit(400, FontWeight.Medium), outfit(500, FontWeight.SemiBold), outfit(500, FontWeight.Bold))
+/** JetBrains Mono: etiquetas y datos. */
+val Jb = FontFamily(Font(R.font.jetbrains_mono_regular, FontWeight.Normal), Font(R.font.jetbrains_mono_medium, FontWeight.Medium), Font(R.font.jetbrains_mono_medium, FontWeight.SemiBold), Font(R.font.jetbrains_mono_medium, FontWeight.Bold))
 
-/** Jerarquía tipográfica: contraste fuerte entre cifras/títulos (display, tabulares) y texto de apoyo. */
+/** Jerarquía tipográfica: títulos y cifras en Outfit 200 ancha; datos y etiquetas en JetBrains Mono. */
 object T {
     private const val TN = "tnum"
-    val mega = TextStyle(fontFamily = Disp, fontWeight = FontWeight.ExtraBold, fontSize = 132.sp, lineHeight = 124.sp, letterSpacing = (-5).sp, fontFeatureSettings = TN)
-    val hero = TextStyle(fontFamily = Disp, fontWeight = FontWeight.Bold, fontSize = 72.sp, lineHeight = 70.sp, letterSpacing = (-2.5).sp, fontFeatureSettings = TN)
-    val display = TextStyle(fontFamily = Disp, fontWeight = FontWeight.Bold, fontSize = 36.sp, lineHeight = 41.sp, letterSpacing = (-1).sp)
-    val h1 = TextStyle(fontFamily = Disp, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 28.sp, letterSpacing = (-.5).sp)
-    val h2 = TextStyle(fontFamily = Mono, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 22.sp, letterSpacing = (-.2).sp)
-    val body = TextStyle(fontFamily = Mono, fontSize = 15.sp, lineHeight = 22.sp, letterSpacing = (-.1).sp)
+    val mega = TextStyle(fontFamily = Disp, fontWeight = FontWeight.ExtraBold, fontSize = 132.sp, lineHeight = 124.sp, letterSpacing = (-2).sp, fontFeatureSettings = TN)
+    val hero = TextStyle(fontFamily = Disp, fontWeight = FontWeight.Bold, fontSize = 64.sp, lineHeight = 68.sp, letterSpacing = 1.sp, fontFeatureSettings = TN)
+    val display = TextStyle(fontFamily = Disp, fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 42.sp, letterSpacing = 3.sp)
+    val h1 = TextStyle(fontFamily = Mono, fontWeight = FontWeight.Medium, fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = 1.sp)
+    val h2 = TextStyle(fontFamily = Mono, fontWeight = FontWeight.Medium, fontSize = 16.sp, lineHeight = 22.sp, letterSpacing = .5.sp)
+    val body = TextStyle(fontFamily = Mono, fontSize = 15.sp, lineHeight = 22.sp)
     val small = TextStyle(fontFamily = Mono, fontSize = 13.sp, lineHeight = 18.sp)
-    val label = TextStyle(fontFamily = Mono, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = .7.sp)
-    val num = TextStyle(fontFamily = Disp, fontWeight = FontWeight.Bold, fontSize = 34.sp, lineHeight = 36.sp, letterSpacing = (-1).sp, fontFeatureSettings = TN)
+    val label = TextStyle(fontFamily = Jb, fontWeight = FontWeight.Normal, fontSize = 11.sp, lineHeight = 14.sp, letterSpacing = 1.4.sp)
+    val num = TextStyle(fontFamily = Jb, fontWeight = FontWeight.Normal, fontSize = 30.sp, lineHeight = 34.sp, fontFeatureSettings = TN)
 }
 
 /**
- * Ryoku Glass usa radios pequeños (6 · 10 · 12 · 16 · 20). Se conserva el nombre `Squircle` y el radio de cada sitio, y se
- * traducen a la escala nueva en un solo punto.
+ * Takumi: radio 0 y esquina superior derecha cortada en diagonal (10/14/22 dp). Se conserva el nombre `Squircle` y el
+ * radio de cada sitio; el corte se deriva de él en un solo punto.
  */
-fun glassRadius(r: Dp): Dp = when { r <= 8.dp -> 6.dp; r <= 14.dp -> 10.dp; r <= 22.dp -> 12.dp; r <= 30.dp -> 16.dp; else -> 20.dp }
+fun takumiCut(r: Dp): Dp = when { r <= 12.dp -> 10.dp; r <= 18.dp -> 14.dp; else -> 22.dp }
 class Squircle(private val radius: Dp) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline =
-        androidx.compose.foundation.shape.RoundedCornerShape(glassRadius(radius)).createOutline(size, layoutDirection, density)
+        androidx.compose.foundation.shape.CutCornerShape(topStart = 0.dp, topEnd = takumiCut(radius), bottomEnd = 0.dp, bottomStart = 0.dp).createOutline(size, layoutDirection, density)
 }
-
-/** Antigua superelipse (ya sin uso; se conserva por si se recupera). */
-@Suppress("unused")
-private class SuperSquircle(private val radius: Dp, private val n: Float = 4.6f) : Shape {
-    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        val w = size.width; val h = size.height
-        val c = minOf(radius.value * density.density * 1.35f, w / 2f, h / 2f)
-        val e = 2f / n
-        fun f(v: Double) = v.toFloat().coerceAtLeast(0f).pow(e)
-        val p = Path()
-        p.moveTo(c, 0f); p.lineTo(w - c, 0f)
-        val steps = 16
-        for (i in 0..steps) { val t = i * (Math.PI / 2 / steps); p.lineTo(w - c + c * f(sin(t)), c - c * f(cos(t))) }
-        p.lineTo(w, h - c)
-        for (i in 0..steps) { val t = i * (Math.PI / 2 / steps); p.lineTo(w - c + c * f(cos(t)), h - c + c * f(sin(t))) }
-        p.lineTo(c, h)
-        for (i in 0..steps) { val t = i * (Math.PI / 2 / steps); p.lineTo(c - c * f(sin(t)), h - c + c * f(cos(t))) }
-        p.lineTo(0f, c)
-        for (i in 0..steps) { val t = i * (Math.PI / 2 / steps); p.lineTo(c - c * f(cos(t)), c - c * f(sin(t))) }
-        p.close()
-        return Outline.Generic(p)
-    }
-}
+val TkSm: Shape = Squircle(10.dp)
 
 val Sq28 = Squircle(24.dp); val Sq20 = Squircle(16.dp); val Sq14 = Squircle(11.dp)
 

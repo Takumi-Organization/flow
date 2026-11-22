@@ -151,7 +151,7 @@ fun EditorScreen(graph: Graph, flowId: String, onBack: () -> Unit, onOpenRun: (S
     Column(Modifier.fillMaxSize().background(k.paper).statusBarsPadding()) {
         // barra superior
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(48.dp).clip(androidx.compose.foundation.shape.CircleShape).background(k.high).clickable(onClick = onBack), contentAlignment = Alignment.Center) { PIcon("back", k.ink, 22.dp) }
+            Box(Modifier.size(48.dp).clip(TkSm).background(k.high).clickable(onClick = onBack), contentAlignment = Alignment.Center) { PIcon("back", k.ink, 22.dp) }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f).clickable { rename = true }) {
                 Text(st.flow.name, style = T.h1.copy(fontSize = 22.sp), color = k.ink, maxLines = 1)
@@ -196,7 +196,7 @@ fun EditorScreen(graph: Graph, flowId: String, onBack: () -> Unit, onOpenRun: (S
                 MiniBtn("+") { vp.scale = (vp.scale * 1.25f).coerceAtMost(2.5f) }
                 MiniBtn("−") { vp.scale = (vp.scale / 1.25f).coerceAtLeast(0.3f) }
             }
-            Box(Modifier.align(Alignment.BottomEnd).padding(16.dp).size(60.dp).clip(androidx.compose.foundation.shape.CircleShape).background(k.accent).clickable {
+            Box(Modifier.align(Alignment.BottomEnd).padding(16.dp).size(60.dp).clip(TkSm).background(k.accent).clickable {
                 val from = one?.takeIf { graph.registry[it.type]?.kind != null }?.let { it.id to (st.firstFreePort(it.id) ?: PORT_OUT) }
                 showPalette = from to null }, contentAlignment = Alignment.Center) {
                 PIcon("plus", k.onAccent, 28.dp)
@@ -231,7 +231,7 @@ fun EditorScreen(graph: Graph, flowId: String, onBack: () -> Unit, onOpenRun: (S
             title = { Text("Nombre del flujo", style = T.h2) }, text = { FField(t, { t = it }, "Nombre") }, containerColor = k.raised) }
 }
 
-@Composable private fun MiniBtn(t: String, onClick: () -> Unit) = Box(Modifier.size(44.dp).clip(androidx.compose.foundation.shape.CircleShape).background(k.raised).border(.8.dp, k.line, androidx.compose.foundation.shape.CircleShape).clickable(onClick = onClick), contentAlignment = Alignment.Center) { Text(t, style = T.h1, color = k.ink) }
+@Composable private fun MiniBtn(t: String, onClick: () -> Unit) = Box(Modifier.size(44.dp).clip(TkSm).background(k.raised).border(.8.dp, k.line, TkSm).clickable(onClick = onClick), contentAlignment = Alignment.Center) { Text(t, style = T.h1, color = k.ink) }
 
 @Composable
 private fun EdgePanel(st: EditorState, e: EdgeDef, reg: NodeRegistry) {
@@ -256,7 +256,7 @@ private fun NodePanel(st: EditorState, n: NodeDef, graph: Graph, center: Offset)
     val request = rememberCapRequester { tick++ }
     val flows by graph.repo.flows.collectAsState(emptyList())
     Column(Modifier.fillMaxWidth().heightIn(max = 400.dp).clip(Sq28).background(k.raised).navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.align(Alignment.CenterHorizontally).size(38.dp, 4.dp).background(k.line.copy(alpha = .3f), androidx.compose.foundation.shape.RoundedCornerShape(50)))
+        Box(Modifier.align(Alignment.CenterHorizontally).size(38.dp, 4.dp).background(k.line.copy(alpha = .3f), TkSm))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Label(when (spec?.kind) { NodeKind.TRIGGER -> "Disparador"; NodeKind.CONDITION -> "Condición"; NodeKind.ACTION -> "Acción"; null -> "Desconocido" })

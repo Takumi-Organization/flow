@@ -13,12 +13,11 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -91,11 +90,11 @@ fun PatchToggle(on: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = M
     val pressed by src.collectIsPressedAsState()
     val x by animateFloatAsState(if (on) 1f else 0f, if (rm) snap() else spring(.55f, 650f), label = "knob")
     val grow by animateFloatAsState(if (pressed && !rm) 1f else 0f, spring(.6f, 800f), label = "grow")
-    val track by animateColorAsState(if (on) tone else kk.ink.copy(alpha = .16f), tween(if (rm) 0 else 220), label = "track")
+    val track by animateColorAsState(if (on) tone else kk.high, tween(if (rm) 0 else 220), label = "track")
     Box(modifier.sizeIn(minWidth = 64.dp, minHeight = 52.dp).toggleable(on, src, null, enabled, Role.Switch) { v -> view.hap(if (v) Hap.CONFIRM else Hap.CLICK); onChange(v) }, contentAlignment = Alignment.Center) {
-        Box(Modifier.size(58.dp, 34.dp).background(track, RoundedCornerShape(50))) {
+        Box(Modifier.size(58.dp, 34.dp).background(track, TkSm).border(1.dp, kk.line, TkSm)) {
             val kw = 28.dp + 6.dp * grow
-            Box(Modifier.offset(x = 3.dp + (58.dp - kw - 6.dp) * x).align(Alignment.CenterStart).size(kw, 28.dp).shadow(3.dp, RoundedCornerShape(50)).background(Color.White, RoundedCornerShape(50)))
+            Box(Modifier.offset(x = 3.dp + (58.dp - kw - 6.dp) * x).align(Alignment.CenterStart).size(kw, 28.dp).background(if (on) kk.paper else kk.muted, TkSm))
         }
     }
 }

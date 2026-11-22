@@ -27,13 +27,13 @@ Las pruebas instrumentadas (`:app:connectedDebugAndroidTest`, emulador API 36) c
 - [docs/SEGURIDAD.md](docs/SEGURIDAD.md) — permisos, receptores exportados y revisión de seguridad.
 - [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) — cómo añadir un nodo, mecanismos de ejecución, límites de Android.
 
-Diseño: sistema propio (Inter, esquinas continuas, tríada coral/violeta/menta, acento elegible) y capturas de las pantallas en [docs/capturas/](docs/capturas/), con el detalle en [docs/ESTADO.md](docs/ESTADO.md#rediseño-visual-2026-11-14).
+Diseño: identidad Takumi (ver abajo) y capturas de las pantallas en [docs/capturas/](docs/capturas/), con el detalle en [docs/ESTADO.md](docs/ESTADO.md#rediseño-visual-2026-11-14).
 
 ## Estado de instalación
 Instalada en el móvil 78af40b4 el 2026-11-15 (debug); arranca sin crash. Bluetooth, auriculares y ubicación en hardware real sin verificar. Comando en [docs/ESTADO.md](docs/ESTADO.md#instalación-en-el-móvil).
 
-## Identidad visual: Ryoku Glass (2026-11-19)
-Rediseño sobre la identidad común de Adrián (vault: `Estilo visual Ryoku Glass`): neutros fríos (`#0F1115` / `#171A20` / `#232830`; claro `#F4F5F7`; AMOLED conserva el negro real), filetes de 1 dp, radios 6-20, **sin sombras, degradados ni resplandores**, Inter y cinco acentos con variante clara. La preferencia guarda el ÍNDICE del acento, así que el orden se conserva: 0 Bermellón (antes Coral), 1 Fucsia (Rosa), 2 Egeo (Violeta), 3 Oro (Ámbar), 4 Lima (Menta); **Oro** es el valor por defecto de instalaciones nuevas (quien ya tenía uno guardado conserva su índice, con el color nuevo equivalente). Los nombres de tema (`grafito`, `washi`, `amoled`, `auto`) no cambian.
+## Identidad visual: Takumi (2026-11-22)
+Sustituye a Ryoku Glass. Negro `#000` y tinta `#F2F2F2` (claro «papel» `#F4F4F4`), monocromo estricto, esquinas rectas con corte diagonal arriba a la derecha (también en los nodos del lienzo), Outfit + JetBrains Mono, seleccionado por inversión, sin cristal ni desenfoque. Los estados se leen por glifo y texto (✓ ▲ ✕ ■), no por color; disparador, condición y acción se distinguen por forma y luminancia. La preferencia de acento se conserva solo por compatibilidad y ya no se muestra. Tokens en `takumi-design`.
 
 Los tres colores de datos del lienzo (disparador, condición, acción) y los tonos por flujo no cambian: son como los colores de línea de Glass, semántica y no decoración. `Squircle` traduce sus radios a la escala Glass en un solo punto (`glassRadius`). El **cristal** (`ui/Glass.kt`, desenfoque real con `GraphicsLayer` + `BlurEffect`) solo está en la barra de pestañas, que ahora flota sobre el contenido; con API < 31 (minSdk 26) es opaca.
 

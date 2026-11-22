@@ -1,5 +1,5 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <path android:strokeColor="#ECE4D8" android:strokeWidth="3" android:pathData="M42,40h24 M32,48v12q0,6 6,6h32q6,0 6,-6V48 M54,66v6"/>
-    <path android:fillColor="#E2342A" android:pathData="M26,34h16v12H26z"/>
-    <path android:fillColor="#ECE4D8" android:pathData="M66,34h16v12H66z M46,72h16v12H46z"/>
-</vector>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Marca Takumi sobre negro; el inset deja la marca dentro de la zona segura del icono adaptativo. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/takumi_marca"
+    android:insetLeft="22%" android:insetTop="22%" android:insetRight="22%" android:insetBottom="22%" />

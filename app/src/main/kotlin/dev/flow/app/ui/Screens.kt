@@ -12,13 +12,10 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -51,17 +48,17 @@ fun BottomNav(route: String, onTab: (String) -> Unit) {
     BoxWithConstraints(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp)) {
         val tabW = maxWidth / TABS.size
         val x by animateDpAsState(tabW * idx, if (rm) snap() else spring(.72f, 520f), label = "tabx")
-        Box(Modifier.fillMaxWidth().height(68.dp).glass(RoundedCornerShape(20.dp))) {
-            Box(Modifier.offset(x = x).width(tabW).fillMaxHeight().padding(5.dp).clip(RoundedCornerShape(14.dp)).background(kk.accent.copy(alpha = if (kk.dark) .16f else .11f)))
+        Box(Modifier.fillMaxWidth().height(68.dp).glass(Squircle(20.dp))) {
+            Box(Modifier.offset(x = x).width(tabW).fillMaxHeight().padding(5.dp).clip(Squircle(14.dp)).background(kk.ink))
             Row(Modifier.fillMaxSize()) {
                 TABS.forEachIndexed { i, (r, t) ->
                     val on = i == idx
-                    val c by animateColorAsState(if (on) kk.ink else kk.muted, tween(if (rm) 0 else 200), label = "tabc")
+                    val c by animateColorAsState(if (on) kk.paper else kk.muted, tween(if (rm) 0 else 200), label = "tabc")
                     val lift by animateFloatAsState(if (on) -1f else 0f, spring(.6f, 600f), label = "lift")
                     Column(Modifier.weight(1f).fillMaxHeight().clickable(null, null, role = Role.Tab) { if (!on) { view.hap(Hap.TICK); onTab(r) } }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                         PIcon(r, c, 25.dp, Modifier.offset(y = (2.dp * lift)))
                         Spacer(Modifier.height(2.dp))
-                        Text(t, style = T.label.copy(fontSize = 10.sp, letterSpacing = 0.sp), color = c)
+                        Text(t.uppercase(), style = T.label.copy(fontSize = 10.sp, letterSpacing = .8.sp), color = c)
                     }
                 }
             }
@@ -114,10 +111,9 @@ fun HomeScreen(graph: Graph, openEditor: (String) -> Unit, openRun: (String) -> 
     val phase = rememberPhase(anyRunning)
     val recentError = runs.firstOrNull()?.status == "ERROR"
     val heroTone by animateColorAsState(when { anyRunning -> kk.accent; recentError -> kk.error; active.isNotEmpty() -> kk.accent; else -> kk.muted }, tween(600), label = "hero")
-    val blurR by animateDpAsState(if (newDialog && !reduceMotion()) 14.dp else 0.dp, spring(stiffness = 300f), label = "blur")
-
+    
     Box(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.fillMaxSize().blur(blurR).statusBarsPadding(), contentPadding = PaddingValues(start = 22.dp, end = 22.dp, bottom = 140.dp)) {
+        LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = PaddingValues(start = 22.dp, end = 22.dp, bottom = 140.dp)) {
             item {
                 Spacer(Modifier.height(26.dp))
                 Text("Flow", style = T.display, color = kk.ink)
@@ -161,7 +157,7 @@ fun HomeScreen(graph: Graph, openEditor: (String) -> Unit, openRun: (String) -> 
                                 .clickable(src, null, role = Role.Button) { view.hap(Hap.HEAVY)
                                     if (r) graph.cancel(f.id) else if (Validator.hasErrors(Validator.validate(f, graph.registry))) scope.launch { msg.showSnackbar("«${f.name}» tiene errores: ábrelo para corregirlos") } else graph.runManual(f.id) }.padding(16.dp),
                                 verticalArrangement = Arrangement.SpaceBetween) {
-                                Box(Modifier.size(34.dp).background(tone, CircleShape), contentAlignment = Alignment.Center) { PIcon(if (r) "stop" else "play", kk.paper, 18.dp) }
+                                Box(Modifier.size(34.dp).background(tone, TkSm), contentAlignment = Alignment.Center) { PIcon(if (r) "stop" else "play", kk.paper, 18.dp) }
                                 Text(f.name, style = T.h2.copy(fontSize = 16.sp), color = kk.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             } }
                     }
@@ -214,7 +210,7 @@ fun HomeScreen(graph: Graph, openEditor: (String) -> Unit, openRun: (String) -> 
         // botón principal
         val src = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
         Row(Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 22.dp, bottom = 104.dp).stagger(3).springPress(src, .93f)
-            .clip(RoundedCornerShape(50))
+            .clip(TkSm)
             .background(kk.accent).clickable(src, null, role = Role.Button) { view.hap(Hap.CONFIRM); newDialog = true }
             .padding(horizontal = 22.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             PIcon("plus", kk.onAccent, 22.dp); Spacer(Modifier.width(8.dp)); Text("Nuevo", style = T.h2, color = kk.onAccent)
@@ -239,7 +235,7 @@ fun RunRowItem(r: RunRow, modifier: Modifier = Modifier, last: Boolean = false, 
     val (mk, c) = Mark(null, RunStatus.valueOf(r.status))
     Column(modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).clickable(role = Role.Button, onClick = onClick), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(34.dp).background(c.copy(alpha = .16f), CircleShape), contentAlignment = Alignment.Center) { PIcon(if (r.status == "SUCCESS") "check" else if (r.status == "ERROR") "cross" else "more", c, 18.dp) }
+            Box(Modifier.size(34.dp).background(c.copy(alpha = .16f), TkSm), contentAlignment = Alignment.Center) { PIcon(if (r.status == "SUCCESS") "check" else if (r.status == "ERROR") "cross" else "more", c, 18.dp) }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(r.flowName, style = T.h2, color = k.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -328,8 +324,8 @@ fun HistoryScreen(graph: Graph, openRun: (String) -> Unit) {
         Panel(Modifier.stagger(0)) {
             Scope(runs, Modifier.fillMaxWidth().height(132.dp), max = 60)
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(8.dp).background(kk.ok, CircleShape)); Spacer(Modifier.width(6.dp)); Text("correcta", style = T.small, color = kk.muted) }
-                Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(8.dp).background(kk.error, CircleShape)); Spacer(Modifier.width(6.dp)); Text("con error", style = T.small, color = kk.muted) }
+                Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(8.dp).background(kk.ink)); Spacer(Modifier.width(6.dp)); Text("correcta", style = T.small, color = kk.muted) }
+                Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(8.dp).border(1.5.dp, kk.ink)); Spacer(Modifier.width(6.dp)); Text("con error", style = T.small, color = kk.muted) }
                 Text("altura = duración", style = T.small, color = kk.faint, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
             }
         }
@@ -360,7 +356,7 @@ fun RunDetailScreen(graph: Graph, runId: String, onBack: () -> Unit) {
     val all by graph.repo.runs(500, true).collectAsState(emptyList()); val kk = k
     LaunchedEffect(runId, all) { run = all.firstOrNull { it.runId == runId }; nodes = graph.repo.runNodes(runId) }
     Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 22.dp).padding(bottom = 40.dp)) {
-        Box(Modifier.padding(top = 10.dp).size(48.dp).clip(CircleShape).background(kk.high).clickable(role = Role.Button, onClick = onBack), contentAlignment = Alignment.Center) { PIcon("back", kk.ink, 24.dp) }
+        Box(Modifier.padding(top = 10.dp).size(48.dp).clip(TkSm).background(kk.high).clickable(role = Role.Button, onClick = onBack), contentAlignment = Alignment.Center) { PIcon("back", kk.ink, 24.dp) }
         val r = run ?: return@Column Text("Ejecución no encontrada (puede haberse borrado).", style = T.body, color = kk.muted, modifier = Modifier.padding(top = 20.dp))
         val (_, c) = Mark(null, RunStatus.valueOf(r.status))
         Spacer(Modifier.height(18.dp))
@@ -376,8 +372,8 @@ fun RunDetailScreen(graph: Graph, runId: String, onBack: () -> Unit) {
         nodes.forEachIndexed { i, n -> val (m, col) = Mark(NodeState.valueOf(n.state))
             Row(Modifier.stagger(i).height(IntrinsicSize.Min)) {
                 Column(Modifier.width(28.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.size(16.dp).background(if (n.state == "SKIPPED") Color.Transparent else col, CircleShape).border(2.dp, col, CircleShape))
-                    if (i < nodes.lastIndex) Box(Modifier.width(2.dp).weight(1f).clip(RoundedCornerShape(1.dp)).background(col.copy(alpha = .45f)))
+                    Box(Modifier.size(16.dp).background(if (n.state == "SKIPPED") Color.Transparent else col, TkSm).border(2.dp, col, TkSm))
+                    if (i < nodes.lastIndex) Box(Modifier.width(2.dp).weight(1f).clip(RectangleShape).background(col.copy(alpha = .45f)))
                 }
                 Column(Modifier.weight(1f).padding(bottom = 20.dp, start = 10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) { Text(n.title, style = T.h2, color = if (n.state == "SKIPPED") kk.faint else kk.ink, modifier = Modifier.weight(1f)); Text("$m ${fmtMs(n.durationMs)}", style = T.small, color = col) }
@@ -434,7 +430,7 @@ fun SettingsScreen(graph: Graph, theme: String, accent: Int, onTheme: (String) -
                 Panel {
                     Caps.forEachIndexed { i, cap -> val ok = cap.granted(ctx)
                         Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(34.dp).background((if (ok) kk.ok else kk.warn).copy(alpha = .16f), CircleShape), contentAlignment = Alignment.Center) { PIcon(if (ok) "check" else "warn", if (ok) kk.ok else kk.warn, 18.dp) }
+                            Box(Modifier.size(34.dp).background((if (ok) kk.ok else kk.warn).copy(alpha = .16f), TkSm), contentAlignment = Alignment.Center) { PIcon(if (ok) "check" else "warn", if (ok) kk.ok else kk.warn, 18.dp) }
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) { Text(cap.name, style = T.h2, color = kk.ink); Text(cap.why, style = T.small, color = kk.muted) }
                             if (!ok) { Spacer(Modifier.width(8.dp)); FButton("Conceder", { request(cap) }, Modifier.heightIn(min = 44.dp)) }
@@ -474,23 +470,11 @@ fun SettingsScreen(graph: Graph, theme: String, accent: Int, onTheme: (String) -
                     val ring by animateColorAsState(if (sel) kk.signal else Color.Transparent, tween(180), label = "ring")
                     Column(Modifier.weight(1f).clickable(null, null, role = Role.RadioButton) { view.hap(Hap.TICK); onTheme(id) }, horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(Modifier.fillMaxWidth().height(86.dp).clip(Sq20).background(kt.paper).border(2.dp, ring, Sq20)) {
-                            Box(Modifier.padding(10.dp).size(26.dp, 8.dp).background(kt.accent, RoundedCornerShape(50)))
+                            Box(Modifier.padding(10.dp).size(26.dp, 8.dp).background(kt.accent))
                             Box(Modifier.align(Alignment.BottomCenter).padding(8.dp).fillMaxWidth().height(34.dp).clip(Sq14).background(kt.raised).border(.5.dp, kt.line, Sq14))
                             if (id == "auto") Box(Modifier.align(Alignment.CenterEnd).width(32.dp).fillMaxHeight().background(kami("washi", false, kt.accent).paper))
                         }
                         Spacer(Modifier.height(8.dp)); Text(n, style = T.small, color = if (sel) kk.ink else kk.muted)
-                    }
-                }
-            }
-            Spacer(Modifier.height(22.dp)); Text("Acento", style = T.h2, color = kk.ink)
-            Spacer(Modifier.height(10.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Accents.forEachIndexed { i, (c, n) ->
-                    val sel = accent == i
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(Modifier.size(56.dp).border(2.dp, if (sel) c else Color.Transparent, CircleShape).padding(5.dp).clip(CircleShape).background(c).clickable(null, null, role = Role.RadioButton) { view.hap(Hap.CONFIRM); onAccent(i) }, contentAlignment = Alignment.Center) {
-                            if (sel) PIcon("check", if (c.red * .2126f + c.green * .7152f + c.blue * .0722f > .5f) Color(0xFF14121A) else Color.White, 24.dp) }
-                        Spacer(Modifier.height(6.dp)); Text(n, style = T.small, color = if (sel) kk.ink else kk.muted)
                     }
                 }
             }
@@ -557,7 +541,7 @@ fun Tutorial(graph: Graph, done: (String) -> Unit) {
     val request = rememberCapRequester(); val rm = reduceMotion(); val kk = k
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 18.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) { steps.forEachIndexed { n, _ ->
-            val c by animateColorAsState(if (n <= i) kk.ink else kk.line, tween(220), label = "seg"); Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(50)).background(c)) } }
+            val c by animateColorAsState(if (n <= i) kk.ink else kk.line, tween(220), label = "seg"); Box(Modifier.weight(1f).height(4.dp).background(c)) } }
         AnimatedContent(i, Modifier.weight(1f).fillMaxWidth(), label = "tut", transitionSpec = {
             if (rm) EnterTransition.None togetherWith ExitTransition.None
             else (slideInHorizontally(spring(.8f, 320f)) { it * dir / 3 } + fadeIn(tween(220))) togetherWith (slideOutHorizontally(tween(180)) { -it * dir / 4 } + fadeOut(tween(140)))
