@@ -27,7 +27,7 @@
 ## No verificado
 - **Hardware real**: el aviso `ACL_CONNECTED` del proceso Bluetooth del sistema y el `AudioDeviceCallback` con un auricular de cable o USB reales. El emulador no los simula y esas difusiones están protegidas (ni el shell puede enviarlas).
 - **Otro nivel de API**: solo hay instalada la imagen `android-36 google_apis_playstore`; no se descargó ninguna otra. `minSdk` y comportamiento en Android 10–15 sin probar.
-- **Móvil físico 78af40b4**: instalada el 2026-11-15 (APK de depuración, `adb install -r`, datos conservados); arranca y `MainActivity` queda en primer plano sin `AndroidRuntime`/`FATAL` en logcat. Sin verificar en el móvil real: Bluetooth, auriculares, ubicación con «Permitir siempre» y disparadores en general (solo se abrió la app).
+- **Móvil físico <serial>**: instalada el 2026-11-15 (APK de depuración, `adb install -r`, datos conservados); arranca y `MainActivity` queda en primer plano sin `AndroidRuntime`/`FATAL` en logcat. Sin verificar en el móvil real: Bluetooth, auriculares, ubicación con «Permitir siempre» y disparadores en general (solo se abrió la app).
 - El flujo de conceder «Permitir siempre» a mano en un móvil real (en el emulador se concede con `pm grant`).
 - Sonido audible.
 
@@ -45,7 +45,7 @@
 - **Forma y movimiento**: esquinas continuas por superelipse, paneles con borde de luz, botones con presión elástica y hápticos por tipo de acción; transiciones de empuje entre pantallas, gesto de atrás desde el borde izquierdo con goma elástica y barra inferior flotante que se desvanece bajo el contenido. Todo el movimiento se anula con la escala de animaciones del sistema a 0.
 - **Pantallas**: Inicio (héroe con cifras y flujos), Biblioteca de plantillas, Actividad, Ajustes, editor (lienzo, panel de nodo y presets) y tutorial con demostración animada del parche.
 - **Navegación externa**: `launchMode="singleTop"` y extra `flowId`; una notificación abre el editor aunque la app ya esté abierta, sin apilar otra actividad.
-- **Capturas**: 40 en [capturas/](capturas/) (grafito, washi y amoled × inicio 1–3, biblioteca, actividad, ejecución, ajustes 1–3, editor y editor con prueba) más las `antes-*` del diseño anterior. Se regeneran con `scripts/capturas.sh <serial> <prefijo> <tema>` tras sembrar datos con `DeviceSeedTest`.
+- **Capturas**: 6 en [capturas/](capturas/) (inicio, flujos, presets, actividad, editor y ajustes), tomadas con el APK release en un emulador Pixel_API36 con datos de ejemplo. Las capturas de rediseños anteriores se retiraron. `scripts/capturas.sh <serial> <prefijo> <tema>` genera otras tras sembrar datos con `DeviceSeedTest`.
 - **Comprobado**: `:engine:test` (48), `:app:lintDebug` y `:app:assembleDebug` en verde; capturas revisadas y sin pantallas negras. `scripts/jank.sh` queda para medir en un dispositivo con el APK de release (el de depuración no es representativo).
 
 ## Cierre (2026-11-15)
@@ -55,9 +55,9 @@
 ## Instalación en el móvil
 Hecha el 2026-11-15. Para repetirla, APK: `app/build/outputs/apk/debug/app-debug.apk` (14 MB). Con el móvil conectado y la depuración USB autorizada:
 ```
-adb -s 78af40b4 install -r ~/Proyectos/flow/app/build/outputs/apk/debug/app-debug.apk
-adb -s 78af40b4 shell monkey -p dev.flow.app -c android.intent.category.LAUNCHER 1
-adb -s 78af40b4 logcat -d -s AndroidRuntime:E | tail
+adb -s <serial> install -r ~/Proyectos/flow/app/build/outputs/apk/debug/app-debug.apk
+adb -s <serial> shell monkey -p dev.flow.app -c android.intent.category.LAUNCHER 1
+adb -s <serial> logcat -d -s AndroidRuntime:E | tail
 ```
 `-r` conserva los datos. Comprobar el nombre de paquete con `aapt dump badging` si `monkey` no arranca.
 
@@ -66,6 +66,6 @@ adb -s 78af40b4 logcat -d -s AndroidRuntime:E | tail
 - **Solo nodos existentes**: ningún preset usa `run_flow` (exige otro flujo ya creado). Los datos de ejemplo (WiFi «MiCasa»/«Oficina», Bluetooth «Coche», coordenadas de Córdoba, fecha de examen y cumpleaños, paquete de Spotify/Maps) se editan tras cargar.
 - **UI** (Presets): búsqueda por título, resumen, categoría y nombres de nodo; chips de categoría con contador; filtro «Sin permisos especiales»; contador de resultados; 10 tarjetas por página con «Mostrar más»; estado vacío. Mismo sistema visual (Inter, tríada); la entrada escalonada ya respeta «reducir animaciones». La estética no la he podido juzgar yo.
 - **Pruebas**: `app/src/test/.../TemplatesTest.kt` (6 pruebas JVM, con `unitTests.isReturnDefaultValues` y el registro real motor + acciones de Android): al menos 40 presets, ids y nombres únicos, cero errores del validador, sin nodos huérfanos ni inalcanzables, tipos existentes, textos y categorías. `:engine:test` (48) y `:app:testDebugUnitTest` (6) en verde; `:app:lintDebug` 0 errores (quedan avisos previos, p. ej. UseKtx); `:app:assembleDebug` compila.
-- **Móvil 78af40b4**: instalado con `adb install -r`, arranca, `MainActivity` en primer plano, sin FATAL en logcat; la pestaña Presets muestra «70 ejemplos», chips, y la búsqueda «coche» devuelve 6 resultados. Durante la comprobación se cargó por accidente una copia desactivada de «Rutina matutina» y se pulsó «Probar» (ejecución correcta): se puede borrar desde Inicio.
+- **Móvil <serial>**: instalado con `adb install -r`, arranca, `MainActivity` en primer plano, sin FATAL en logcat; la pestaña Presets muestra «70 ejemplos», chips, y la búsqueda «coche» devuelve 6 resultados. Durante la comprobación se cargó por accidente una copia desactivada de «Rutina matutina» y se pulsó «Probar» (ejecución correcta): se puede borrar desde Inicio.
 - **No verificado**: ejecución real de cada preset en hardware (solo carga y validación); paquetes de apps (Spotify/Maps) en el móvil; el aspecto de la biblioteca con 70 elementos (sin capturas revisadas).
 - **Propuestas de nodos nuevos** (no implementadas): disparador periódico («cada N minutos/horas»), disparador de pantalla encendida/apagada, condición de «modo avión»/datos móviles, acción de brillo, acción «abrir enlace/URL», acción de linterna, y un disparador de llamada entrante; permitirían presets de pausas cada hora, ahorro con pantalla apagada y cadenas con otros flujos sin crear antes uno manual. También sería útil que `run_flow` aceptara «flujo de otro preset» para encadenar presets.
